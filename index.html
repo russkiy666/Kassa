@@ -477,25 +477,6 @@
   }
   .chart-tooltip.show{opacity:1;}
 
-  /* ---------- settings ---------- */
-  .settings-toggle{
-    background:none;
-    border:none;
-    font-family:'Inter',sans-serif;
-    font-size:14px;
-    color:var(--gold);
-    cursor:pointer;
-    padding:0;
-  }
-  .settings-toggle:hover{filter:brightness(1.15);}
-  .settings-body{
-    display:none;
-    margin-top:20px;
-    grid-template-columns:repeat(3,1fr) auto;
-    gap:18px;
-    align-items:end;
-  }
-  .settings-body.open{display:grid;}
   .foot-note{
     font-size:12px;
     color:var(--text-soft);
@@ -506,7 +487,6 @@
   @media (max-width:720px){
     .vaults{grid-template-columns:repeat(2,1fr);}
     form.deal-form{grid-template-columns:1fr 1fr;}
-    .settings-body{grid-template-columns:1fr 1fr;}
     .hero-grid{grid-template-columns:1fr; gap:16px;}
     .hero-item{border-left:none; padding-left:0; border-top:1px solid var(--line); padding-top:16px;}
     .hero-item:first-child{border-top:none; padding-top:0;}
@@ -609,42 +589,52 @@
   </section>
 
   <section class="panel">
-    <h2>История сделок</h2>
-    <div class="table-wrap">
-      <table id="dealsTable">
-        <thead>
-          <tr>
-            <th>Дата</th>
-            <th>Клиент</th>
-            <th>Оплата</th>
-            <th>ПРИНЯЛ</th>
-            <th>МОП на сделке</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="dealsBody"></tbody>
-      </table>
+    <div class="collapse-header" id="dealsHistoryToggle">
+      <h2 style="margin:0;">История сделок <span class="foot-note" id="dealsCountBadge" style="margin:0;"></span></h2>
+      <span class="collapse-chevron" id="dealsChevron">Показать ▾</span>
     </div>
-    <p class="empty" id="emptyState">Пока пусто. Добавь первую сделку выше — она появится здесь.</p>
+    <div id="dealsHistoryBody" style="display:none; margin-top:16px;">
+      <div class="table-wrap">
+        <table id="dealsTable">
+          <thead>
+            <tr>
+              <th>Дата</th>
+              <th>Клиент</th>
+              <th>Оплата</th>
+              <th>ПРИНЯЛ</th>
+              <th>МОП на сделке</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="dealsBody"></tbody>
+        </table>
+      </div>
+      <p class="empty" id="emptyState">Пока пусто. Добавь первую сделку выше — она появится здесь.</p>
+    </div>
   </section>
 
   <section class="panel">
-    <h2>История расходов</h2>
-    <div class="table-wrap">
-      <table id="expensesTable">
-        <thead>
-          <tr>
-            <th>Дата</th>
-            <th>Название</th>
-            <th>Сумма</th>
-            <th>Оплатил</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="expensesBody"></tbody>
-      </table>
+    <div class="collapse-header" id="expensesHistoryToggle">
+      <h2 style="margin:0;">История расходов <span class="foot-note" id="expensesCountBadge" style="margin:0;"></span></h2>
+      <span class="collapse-chevron" id="expensesChevron">Показать ▾</span>
     </div>
-    <p class="empty" id="expensesEmptyState">Пока нет расходов.</p>
+    <div id="expensesHistoryBody" style="display:none; margin-top:16px;">
+      <div class="table-wrap">
+        <table id="expensesTable">
+          <thead>
+            <tr>
+              <th>Дата</th>
+              <th>Название</th>
+              <th>Сумма</th>
+              <th>Оплатил</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="expensesBody"></tbody>
+        </table>
+      </div>
+      <p class="empty" id="expensesEmptyState">Пока нет расходов.</p>
+    </div>
   </section>
 
   <section class="panel">
@@ -656,28 +646,6 @@
       <div class="chart-tooltip" id="chartTooltip"></div>
       <p class="empty" id="chartEmpty">График появится, как только будет хотя бы одна сделка.</p>
     </div>
-  </section>
-
-  <section class="panel">
-    <button class="settings-toggle" id="settingsToggle">Настроить проценты</button>
-    <div class="settings-body" id="settingsBody">
-      <div class="field">
-        <label for="sManager">Макс, % с прибыли</label>
-        <input id="sManager" type="number" min="0" max="100" step="0.1">
-      </div>
-      <div class="field">
-        <label for="sMop">МОП, % с прибыли</label>
-        <input id="sMop" type="number" min="0" max="100" step="0.1">
-      </div>
-      <div class="field">
-        <label for="sSplit">Доля Я от остатка, %</label>
-        <input id="sSplit" type="number" min="0" max="100" step="0.1">
-      </div>
-      <div>
-        <button class="primary" id="saveSettings">Сохранить</button>
-      </div>
-    </div>
-    <p class="foot-note">Расчёт по каждой сделке пересчитывается по текущим процентам автоматически — старые сделки тоже.</p>
   </section>
 
   <section class="panel" id="importPanel">
@@ -792,10 +760,6 @@ function computeDistribution(){
 
 async function loadData(){
   try{
-    const s = localStorage.getItem('kassa_settings');
-    if(s) settings = JSON.parse(s);
-  }catch(e){ /* keep current settings on error */ }
-  try{
     const d = localStorage.getItem('kassa_deals');
     if(d) deals = JSON.parse(d);
   }catch(e){ /* keep current deals on error, don't wipe */ }
@@ -821,11 +785,6 @@ async function saveDeals(){
 
 async function saveExpenses(){
   try{ localStorage.setItem('kassa_expenses', JSON.stringify(expenses)); }
-  catch(e){ console.error('storage error', e); }
-}
-
-async function saveSettingsToStorage(){
-  try{ localStorage.setItem('kassa_settings', JSON.stringify(settings)); }
   catch(e){ console.error('storage error', e); }
 }
 
@@ -920,6 +879,7 @@ function receivedTagClass(name){
 }
 
 function renderTable(){
+  document.getElementById('dealsCountBadge').textContent = deals.length ? `(${deals.length})` : '';
   const body = document.getElementById('dealsBody');
   const empty = document.getElementById('emptyState');
   if(deals.length === 0){
@@ -956,6 +916,7 @@ function renderTable(){
 }
 
 function renderExpensesTable(){
+  document.getElementById('expensesCountBadge').textContent = expenses.length ? `(${expenses.length})` : '';
   const body = document.getElementById('expensesBody');
   const empty = document.getElementById('expensesEmptyState');
   if(expenses.length === 0){
@@ -1215,10 +1176,6 @@ document.getElementById('expenseForm').addEventListener('submit', async (e) => {
   render();
 });
 
-document.getElementById('settingsToggle').addEventListener('click', () => {
-  document.getElementById('settingsBody').classList.toggle('open');
-});
-
 const rkoOffersEl = document.getElementById('rkoOffers');
 const rkoProfitInput = document.getElementById('rkoProfit');
 let selectedOffers = new Set();
@@ -1272,31 +1229,20 @@ document.getElementById('rkoForm').addEventListener('submit', async (e) => {
   render();
 });
 
-const rkoHistoryToggle = document.getElementById('rkoHistoryToggle');
-const rkoHistoryBody = document.getElementById('rkoHistoryBody');
-const rkoChevron = document.getElementById('rkoChevron');
-rkoHistoryToggle.addEventListener('click', () => {
-  const isOpen = rkoHistoryBody.style.display !== 'none';
-  rkoHistoryBody.style.display = isOpen ? 'none' : 'block';
-  rkoChevron.textContent = isOpen ? 'Показать ▾' : 'Скрыть ▴';
-});
-
-document.getElementById('saveSettings').addEventListener('click', async () => {
-  const m = parseFloat(document.getElementById('sManager').value);
-  const p = parseFloat(document.getElementById('sMop').value);
-  const s = parseFloat(document.getElementById('sSplit').value);
-  if(!isNaN(m)) settings.managerPct = m;
-  if(!isNaN(p)) settings.mopPct = p;
-  if(!isNaN(s)) settings.splitPct = s;
-  await saveSettingsToStorage();
-  render();
-});
-
-function fillSettingsInputs(){
-  document.getElementById('sManager').value = settings.managerPct;
-  document.getElementById('sMop').value = settings.mopPct;
-  document.getElementById('sSplit').value = settings.splitPct;
+function makeCollapsible(toggleId, bodyId, chevronId){
+  const toggle = document.getElementById(toggleId);
+  const body = document.getElementById(bodyId);
+  const chevron = document.getElementById(chevronId);
+  toggle.addEventListener('click', () => {
+    const isOpen = body.style.display !== 'none';
+    body.style.display = isOpen ? 'none' : 'block';
+    chevron.textContent = isOpen ? 'Показать ▾' : 'Скрыть ▴';
+  });
 }
+
+makeCollapsible('dealsHistoryToggle', 'dealsHistoryBody', 'dealsChevron');
+makeCollapsible('expensesHistoryToggle', 'expensesHistoryBody', 'expensesChevron');
+makeCollapsible('rkoHistoryToggle', 'rkoHistoryBody', 'rkoChevron');
 
 const IMPORT_DATA = [{"client": "@Kirill22815", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@zzfs9", "payment": 15000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@ussra_56", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@klimmm89", "payment": 20000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@narzo4eal", "payment": 9000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@prodbyfila", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@Qracae", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@Legetl", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@op_dare", "payment": 20000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@e1r5d9", "payment": 4000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@ValeraprodZ", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@simpatichnyi", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@bellingham2O", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@kazantiip2007", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@leynnics", "payment": 2000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@onedyng", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@zxc_grib", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Макс", "date": "2026-09-12"}, {"client": "@seltyy7", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@L1wez", "payment": 7000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@exdiglq4", "payment": 20000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@ANONYMOU3LYFESTYLE", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@wilsbx", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@mota333u", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@bogdanmanagement", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@alipiin0", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@matyrr1", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@Lak3raz", "payment": 3000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@ce4440", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@goodbyelames", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@rvezee", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@ow912", "payment": 29500.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@dusiggme", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@vl_it01", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@Vezunch1k1", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@a013ye77", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@glerag1", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@semaabetter", "payment": 7500.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@richesnew", "payment": 9000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@sanek7797", "payment": 20000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@aabramo_v", "payment": 20000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@ultra_bogat111", "payment": 7500.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@usecryptoflow", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@left1k_prime", "payment": 8000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@Gnomultra", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@raydi7ess", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@innb0", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "ХАТА", "payment": 8000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@hero_username", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@playa1312", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@suskss", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@Paveldurowiw", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@Orsportstngame", "payment": 8000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@mefedik", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@biznesultra87", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@kolyyy12", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@uslyshall", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@skolenx", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@rchxx77", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@forwasl", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@nominal05", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@allyximmo", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@KPACOTKACOCET", "payment": 4000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@djneisywj", "payment": 30000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "8 сен без юза", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@blademail1", "payment": 25000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@whyteezee", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Макс", "date": "2026-09-12"}, {"client": "@egorjii", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@youngcdf", "payment": 12500.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@egdaal1", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}];
 
@@ -1330,7 +1276,6 @@ document.getElementById('importBtn').addEventListener('click', async () => {
 
 (async function init(){
   await loadData();
-  fillSettingsInputs();
   render();
   if(localStorage.getItem('kassa_imported_v1')){
     const btn = document.getElementById('importBtn');
