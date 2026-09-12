@@ -243,6 +243,39 @@
   }
   .field select option{background:#1A1F26; color:var(--text);}
 
+  .multi-chip{display:flex; flex-wrap:wrap; gap:8px;}
+  .multi-chip button{
+    border:1px solid var(--line);
+    background:rgba(255,255,255,0.03);
+    color:var(--text-soft);
+    font-family:'Inter',sans-serif;
+    font-size:12.5px;
+    padding:9px 13px;
+    border-radius:20px;
+    cursor:pointer;
+    transition:background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .multi-chip button.active{
+    background:var(--gold);
+    border-color:var(--gold);
+    color:#1A1500;
+    font-weight:600;
+  }
+
+  .collapse-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    cursor:pointer;
+    gap:12px;
+  }
+  .collapse-chevron{
+    color:var(--gold);
+    font-size:13px;
+    font-family:'Inter',sans-serif;
+    white-space:nowrap;
+  }
+
   .segmented{
     position:relative;
     display:flex;
@@ -666,23 +699,23 @@
   <section class="panel">
     <h2>Новый лид</h2>
     <form class="deal-form" id="rkoForm">
-      <div class="field">
+      <div class="field" style="grid-column:1/-1;">
         <label for="rkoClient">Юзер</label>
         <input id="rkoClient" type="text" required placeholder="@username">
       </div>
-      <div class="field">
-        <label for="rkoOffer">Что оформил</label>
-        <select id="rkoOffer" required>
-          <option value="РЕГБИЗ + РКО АЛЬФА">РЕГБИЗ + РКО АЛЬФА</option>
-          <option value="РКО ОЗОН">РКО ОЗОН</option>
-          <option value="РКО СБЕР">РКО СБЕР</option>
-          <option value="РКО УРАЛСИБ">РКО УРАЛСИБ</option>
-          <option value="РКО ТИНКОФФ">РКО ТИНКОФФ</option>
-        </select>
+      <div class="field" style="grid-column:1/-1;">
+        <label>Что оформил (можно несколько)</label>
+        <div class="multi-chip" id="rkoOffers">
+          <button type="button" data-val="РЕГБИЗ + РКО АЛЬФА" data-price="4000">РЕГБИЗ + РКО АЛЬФА · 4 000 ₽</button>
+          <button type="button" data-val="РКО ОЗОН" data-price="1000">РКО ОЗОН · 1 000 ₽</button>
+          <button type="button" data-val="РКО СБЕР" data-price="1000">РКО СБЕР · 1 000 ₽</button>
+          <button type="button" data-val="РКО УРАЛСИБ" data-price="1000">РКО УРАЛСИБ · 1 000 ₽</button>
+          <button type="button" data-val="РКО ТИНКОФФ" data-price="1000">РКО ТИНКОФФ · 1 000 ₽</button>
+        </div>
       </div>
       <div class="field">
-        <label for="rkoProfit">Прибыль с лида, ₽</label>
-        <input id="rkoProfit" type="number" min="0" step="1" required placeholder="5000">
+        <label for="rkoProfit">Прибыль с лида, ₽ (авто)</label>
+        <input id="rkoProfit" type="text" readonly value="0 ₽">
       </div>
       <div class="submit-row">
         <button type="submit" class="primary">Добавить лида</button>
@@ -691,22 +724,27 @@
   </section>
 
   <section class="panel">
-    <h2>История лидов РКО</h2>
-    <div class="table-wrap">
-      <table id="rkoTable">
-        <thead>
-          <tr>
-            <th>Дата</th>
-            <th>Юзер</th>
-            <th>Оформил</th>
-            <th>Прибыль</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="rkoBody"></tbody>
-      </table>
+    <div class="collapse-header" id="rkoHistoryToggle">
+      <h2 style="margin:0;">История лидов РКО <span class="foot-note" id="rkoCountBadge" style="margin:0;"></span></h2>
+      <span class="collapse-chevron" id="rkoChevron">Показать ▾</span>
     </div>
-    <p class="empty" id="rkoEmptyState">Пока нет лидов.</p>
+    <div id="rkoHistoryBody" style="display:none; margin-top:16px;">
+      <div class="table-wrap">
+        <table id="rkoTable">
+          <thead>
+            <tr>
+              <th>Дата</th>
+              <th>Юзер</th>
+              <th>Оформил</th>
+              <th>Прибыль</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="rkoBody"></tbody>
+        </table>
+      </div>
+      <p class="empty" id="rkoEmptyState">Пока нет лидов.</p>
+    </div>
   </section>
 
 </div>
@@ -765,6 +803,15 @@ async function loadData(){
     const ex = localStorage.getItem('kassa_expenses');
     if(ex) expenses = JSON.parse(ex);
   }catch(e){ /* keep current expenses on error, don't wipe */ }
+  try{
+    const rko = localStorage.getItem('kassa_rko_leads');
+    if(rko) rkoLeads = JSON.parse(rko);
+  }catch(e){ /* keep current rko leads on error, don't wipe */ }
+}
+
+async function saveRkoLeads(){
+  try{ localStorage.setItem('kassa_rko_leads', JSON.stringify(rkoLeads)); }
+  catch(e){ console.error('storage error', e); }
 }
 
 async function saveDeals(){
@@ -1034,6 +1081,55 @@ function render(){
   renderTable();
   renderExpensesTable();
   renderChart();
+  renderRko();
+}
+
+function renderRko(){
+  const count = rkoLeads.length;
+  const netProfit = rkoLeads.reduce((s,l) => s + l.profit, 0);
+
+  const grid = document.getElementById('rkoStats');
+  if(!grid.dataset.built){
+    grid.innerHTML = `
+      <div class="vault rko"><div class="who">Лидов</div><div class="amt" id="rkoCount">0</div></div>
+      <div class="vault rko"><div class="who">Чистая прибыль</div><div class="amt" id="rkoProfitTotal">0 ₽</div></div>
+    `;
+    grid.dataset.built = '1';
+  }
+  document.getElementById('rkoCount').textContent = count;
+  animTarget('rkoProfitTotal', netProfit);
+
+  document.getElementById('rkoCountBadge').textContent = count ? `(${count})` : '';
+
+  const body = document.getElementById('rkoBody');
+  const empty = document.getElementById('rkoEmptyState');
+  if(rkoLeads.length === 0){
+    body.innerHTML = '';
+    empty.style.display = 'block';
+  } else {
+    empty.style.display = 'none';
+    const rows = [...rkoLeads].reverse().map(l => {
+      const dateStr = new Date(l.date).toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit'});
+      const enterClass = (l.id === lastAddedRkoId) ? ' enter' : '';
+      return `<tr class="${enterClass.trim()}">
+        <td>${dateStr}</td>
+        <td class="name-cell">${escapeHtml(l.client)}</td>
+        <td class="name-cell">${escapeHtml(l.offers.join(', '))}</td>
+        <td>${fmt(l.profit)}</td>
+        <td><button class="del-btn" data-id="${l.id}">убрать</button></td>
+      </tr>`;
+    }).join('');
+    body.innerHTML = rows;
+    body.querySelectorAll('.del-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        rkoLeads = rkoLeads.filter(l => String(l.id) !== id);
+        await saveRkoLeads();
+        render();
+      });
+    });
+  }
+  lastAddedRkoId = null;
 }
 
 const toggle = document.getElementById('mopToggle');
@@ -1121,6 +1217,68 @@ document.getElementById('expenseForm').addEventListener('submit', async (e) => {
 
 document.getElementById('settingsToggle').addEventListener('click', () => {
   document.getElementById('settingsBody').classList.toggle('open');
+});
+
+const rkoOffersEl = document.getElementById('rkoOffers');
+const rkoProfitInput = document.getElementById('rkoProfit');
+let selectedOffers = new Set();
+
+function updateRkoProfit(){
+  let sum = 0;
+  rkoOffersEl.querySelectorAll('button.active').forEach(b => {
+    sum += parseFloat(b.getAttribute('data-price')) || 0;
+  });
+  rkoProfitInput.value = fmt(sum);
+}
+
+rkoOffersEl.addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  const val = btn.getAttribute('data-val');
+  if(selectedOffers.has(val)){
+    selectedOffers.delete(val);
+    btn.classList.remove('active');
+  } else {
+    selectedOffers.add(val);
+    btn.classList.add('active');
+  }
+  updateRkoProfit();
+});
+
+document.getElementById('rkoForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const client = document.getElementById('rkoClient').value.trim();
+  if(!client || selectedOffers.size === 0) return;
+  let profit = 0;
+  const offers = [];
+  rkoOffersEl.querySelectorAll('button.active').forEach(b => {
+    offers.push(b.getAttribute('data-val'));
+    profit += parseFloat(b.getAttribute('data-price')) || 0;
+  });
+  const id = Date.now();
+  rkoLeads.push({
+    id,
+    date: new Date().toISOString(),
+    client,
+    offers,
+    profit
+  });
+  lastAddedRkoId = id;
+  await saveRkoLeads();
+  e.target.reset();
+  selectedOffers = new Set();
+  rkoOffersEl.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  updateRkoProfit();
+  render();
+});
+
+const rkoHistoryToggle = document.getElementById('rkoHistoryToggle');
+const rkoHistoryBody = document.getElementById('rkoHistoryBody');
+const rkoChevron = document.getElementById('rkoChevron');
+rkoHistoryToggle.addEventListener('click', () => {
+  const isOpen = rkoHistoryBody.style.display !== 'none';
+  rkoHistoryBody.style.display = isOpen ? 'none' : 'block';
+  rkoChevron.textContent = isOpen ? 'Показать ▾' : 'Скрыть ▴';
 });
 
 document.getElementById('saveSettings').addEventListener('click', async () => {
