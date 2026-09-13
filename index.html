@@ -510,6 +510,13 @@
     <h1>Касса</h1>
   </header>
   <p class="tagline">Заносишь сделку — сумма сама расходится по доле каждого.</p>
+
+  <div class="form-tabs" id="projectTabs" style="margin-bottom:22px;">
+    <button type="button" data-project="vkider" class="active">Вкидер</button>
+    <button type="button" data-project="artur">Артур</button>
+    <button type="button" data-project="ruslan">Руслан</button>
+  </div>
+
   <div class="gold-rule"></div>
 
   <div class="hero-grid">
@@ -798,21 +805,51 @@ function computeDealSplit(d, revenue, expenseTotal){
 }
 
 let dataReady = { deals: false, expenses: false, rko: false };
+let currentProject = 'vkider';
+let dealsRef = null;
+let expensesRef = null;
 
-function attachFirebaseListeners(){
-  db.ref('deals').on('value', snap => {
+async function migrateLegacyDataIfNeeded(){
+  try{
+    const projSnap = await db.ref('projects/vkider/deals').once('value');
+    if(projSnap.val() === null){
+      const oldDeals = await db.ref('deals').once('value');
+      const oldExpenses = await db.ref('expenses').once('value');
+      if(oldDeals.val() !== null){
+        await db.ref('projects/vkider/deals').set(oldDeals.val());
+      }
+      if(oldExpenses.val() !== null){
+        await db.ref('projects/vkider/expenses').set(oldExpenses.val());
+      }
+    }
+  }catch(e){ console.error('migration error', e); }
+}
+
+function attachProjectListeners(project){
+  if(dealsRef) dealsRef.off();
+  if(expensesRef) expensesRef.off();
+  deals = [];
+  expenses = [];
+  render();
+
+  dealsRef = db.ref(`projects/${project}/deals`);
+  expensesRef = db.ref(`projects/${project}/expenses`);
+
+  dealsRef.on('value', snap => {
     deals = snap.val() || [];
     dataReady.deals = true;
     updateImportButtonState();
     render();
   }, err => console.error('Firebase deals error', err));
 
-  db.ref('expenses').on('value', snap => {
+  expensesRef.on('value', snap => {
     expenses = snap.val() || [];
     dataReady.expenses = true;
     render();
   }, err => console.error('Firebase expenses error', err));
+}
 
+function attachRkoListener(){
   db.ref('rkoLeads').on('value', snap => {
     rkoLeads = snap.val() || [];
     dataReady.rko = true;
@@ -826,18 +863,18 @@ async function saveRkoLeads(){
 }
 
 async function saveDeals(){
-  try{ await db.ref('deals').set(deals); }
+  try{ await db.ref(`projects/${currentProject}/deals`).set(deals); }
   catch(e){ console.error('Firebase save error', e); }
 }
 
 async function saveExpenses(){
-  try{ await db.ref('expenses').set(expenses); }
+  try{ await db.ref(`projects/${currentProject}/expenses`).set(expenses); }
   catch(e){ console.error('Firebase save error', e); }
 }
 
 function updateImportButtonState(){
   const btn = document.getElementById('importBtn');
-  const status = document.getElementById('importStatus');
+  if(currentProject !== 'vkider') return;
   if(deals.some(d => d.importedBatch === 'v1')){
     btn.disabled = true;
     btn.textContent = 'Импортировано';
@@ -1334,8 +1371,24 @@ document.getElementById('importBtn').addEventListener('click', async () => {
   status.textContent = `Добавлено сделок: ${added}.`;
 });
 
+const projectTabs = document.getElementById('projectTabs');
+projectTabs.addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  const project = btn.getAttribute('data-project');
+  if(project === currentProject) return;
+  currentProject = project;
+  projectTabs.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+  document.getElementById('importPanel').style.display = (project === 'vkider') ? '' : 'none';
+  attachProjectListeners(project);
+});
+
 render();
-attachFirebaseListeners();
+attachRkoListener();
+(async function initProject(){
+  await migrateLegacyDataIfNeeded();
+  attachProjectListeners(currentProject);
+})();
 </script>
 </body>
 </html>
