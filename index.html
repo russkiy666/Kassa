@@ -605,6 +605,8 @@
               <th>Оплата</th>
               <th>ПРИНЯЛ</th>
               <th>МОП на сделке</th>
+              <th>Чистыми Илье</th>
+              <th>Чистыми Роме</th>
               <th></th>
             </tr>
           </thead>
@@ -783,6 +785,18 @@ function computeDistribution(){
   return { revenue, expenseTotal, netProfit, managerTotal, mopTotal, yaTotal, romaTotal };
 }
 
+function computeDealSplit(d, revenue, expenseTotal){
+  const managerCut = d.payment * settings.managerPct / 100;
+  const mopCut = d.payment * settings.mopPct / 100;
+  const afterCuts = d.payment - managerCut - mopCut;
+  const expenseShare = revenue > 0 ? expenseTotal * (d.payment / revenue) : 0;
+  const remainder = afterCuts - expenseShare;
+  const yaBase = remainder * settings.splitPct / 100;
+  const romaShare = remainder - yaBase;
+  const yaShare = (d.mopWho === 'Илья' || d.mopWho === 'Я') ? (yaBase + mopCut) : yaBase;
+  return { yaShare, romaShare };
+}
+
 let dataReady = { deals: false, expenses: false, rko: false };
 
 function attachFirebaseListeners(){
@@ -929,18 +943,23 @@ function renderTable(){
     empty.style.display = 'block';
   } else {
     empty.style.display = 'none';
+    const revenue = deals.reduce((s,x) => s + x.payment, 0);
+    const expenseTotal = expenses.reduce((s,x) => s + x.amount, 0);
     const rows = [...deals].reverse().map(d => {
       const tagClass = (d.mopWho === 'Илья' || d.mopWho === 'Я') ? 'ya' : 'mop';
       const receivedBy = d.receivedBy || 'МОП';
       const receivedClass = receivedTagClass(receivedBy);
       const dateStr = new Date(d.date).toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit'});
       const enterClass = (d.id === lastAddedId) ? ' enter' : '';
+      const split = computeDealSplit(d, revenue, expenseTotal);
       return `<tr class="${enterClass.trim()}">
         <td>${dateStr}</td>
         <td class="name-cell">${escapeHtml(d.client)}</td>
         <td>${fmt(d.payment)}</td>
         <td><span class="who-tag ${receivedClass}">${receivedBy}</span></td>
         <td><span class="who-tag ${tagClass}">${d.mopWho}</span></td>
+        <td class="amt-ya">${fmt(split.yaShare)}</td>
+        <td class="amt-roma">${fmt(split.romaShare)}</td>
         <td><button class="del-btn" data-id="${d.id}">убрать</button></td>
       </tr>`;
     }).join('');
