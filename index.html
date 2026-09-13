@@ -759,9 +759,13 @@ function computeDistribution(){
   const expenseTotal = expenses.reduce((s,e) => s + e.amount, 0);
   const netProfit = revenue - expenseTotal;
 
-  const managerTotal = netProfit * settings.managerPct / 100;
-  const mopPoolTotal = revenue > 0 ? netProfit * settings.mopPct / 100 : 0;
-  const remainderPool = netProfit - managerTotal - mopPoolTotal;
+  // Выручка − % МОПа и Макса = сумма
+  const managerTotal = revenue * settings.managerPct / 100;
+  const mopPoolTotal = revenue > 0 ? revenue * settings.mopPct / 100 : 0;
+  const afterCuts = revenue - managerTotal - mopPoolTotal;
+
+  // сумма − расход = делим 50/50 дальше с Ромой
+  const remainderPool = afterCuts - expenseTotal;
   const yaBase = remainderPool * settings.splitPct / 100;
   const romaTotal = remainderPool - yaBase;
 
