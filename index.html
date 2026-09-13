@@ -498,6 +498,26 @@
     border-color:var(--gold);
     color:var(--gold);
   }
+  .form-tabs-wide{
+    display:block;
+    width:100%;
+    border:1px solid var(--line);
+    background:rgba(255,255,255,0.03);
+    color:var(--text-soft);
+    font-family:'Space Grotesk',sans-serif;
+    font-size:14px;
+    font-weight:600;
+    padding:14px 10px;
+    border-radius:6px;
+    cursor:pointer;
+    margin-bottom:8px;
+    transition:background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .form-tabs-wide.active{
+    background:var(--gold-soft);
+    border-color:var(--gold);
+    color:var(--gold);
+  }
 
   .submit-row{
     grid-column:1 / -1;
@@ -665,11 +685,13 @@
   </header>
   <p class="tagline">Заносишь сделку — сумма сама расходится по доле каждого.</p>
 
-  <div class="form-tabs" id="projectTabs" style="margin-bottom:22px;">
-    <button type="button" data-project="vkider" class="active">Вкидер</button>
-    <button type="button" data-project="artur">Артур</button>
-    <button type="button" data-project="ruslan">Руслан</button>
-    <button type="button" data-project="summary">Общая сводка</button>
+  <div id="projectTabs" style="margin-bottom:22px;">
+    <button type="button" data-project="summary" class="form-tabs-wide">Общая сводка</button>
+    <div class="form-tabs">
+      <button type="button" data-project="vkider" class="active">Вкидер</button>
+      <button type="button" data-project="artur">Артур</button>
+      <button type="button" data-project="ruslan">Руслан</button>
+    </div>
   </div>
 
   <div id="kassaSections">
