@@ -883,6 +883,7 @@
           <button type="button" data-val="РКО СБЕР" data-price="500">РКО СБЕР · 500 ₽</button>
           <button type="button" data-val="РКО УРАЛСИБ" data-price="500">РКО УРАЛСИБ · 500 ₽</button>
           <button type="button" data-val="РКО ТИНКОФФ" data-price="500">РКО ТИНКОФФ · 500 ₽</button>
+          <button type="button" data-val="ОПЛАТА ОБУЧЕНИЕ" data-price="1500">ОПЛАТА ОБУЧЕНИЕ · 1 500 ₽</button>
         </div>
       </div>
       <div class="field">
@@ -1541,13 +1542,15 @@ document.getElementById('rkoForm').addEventListener('submit', async (e) => {
     profit += parseFloat(b.getAttribute('data-price')) || 0;
   });
   const id = Date.now();
+  const dayOfMonth = new Date().getDate();
+  const autoPaid = (dayOfMonth >= 10 && dayOfMonth <= 14) && offers.includes('РЕГБИЗ + РКО АЛЬФА');
   rkoLeads.push({
     id,
     date: new Date().toISOString(),
     client,
     offers,
     profit,
-    paid: false
+    paid: autoPaid
   });
   lastAddedRkoId = id;
   await saveRkoLeads();
