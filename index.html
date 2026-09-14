@@ -866,6 +866,7 @@
   <p class="tagline">Лиды на открытие счетов — прибыль по каждому вносится вручную.</p>
 
   <section class="vaults" id="rkoStats" style="display:flex; flex-wrap:wrap; gap:14px;"></section>
+  <p class="foot-note" style="margin-top:0; margin-bottom:26px;">Выплаты приходят двумя волнами: 10–12 и 30–2 числа месяца. Пока деньги не пришли — лид висит в «Ожидает»; когда пришли — отмечай его в истории, статус переключится на «Пришло» одним нажатием.</p>
 
   <section class="panel">
     <h2>Новый лид</h2>
@@ -877,11 +878,11 @@
       <div class="field" style="grid-column:1/-1;">
         <label>Что оформил (можно несколько)</label>
         <div class="multi-chip" id="rkoOffers">
-          <button type="button" data-val="РЕГБИЗ + РКО АЛЬФА" data-price="4000">РЕГБИЗ + РКО АЛЬФА · 4 000 ₽</button>
-          <button type="button" data-val="РКО ОЗОН" data-price="1000">РКО ОЗОН · 1 000 ₽</button>
-          <button type="button" data-val="РКО СБЕР" data-price="1000">РКО СБЕР · 1 000 ₽</button>
-          <button type="button" data-val="РКО УРАЛСИБ" data-price="1000">РКО УРАЛСИБ · 1 000 ₽</button>
-          <button type="button" data-val="РКО ТИНКОФФ" data-price="1000">РКО ТИНКОФФ · 1 000 ₽</button>
+          <button type="button" data-val="РЕГБИЗ + РКО АЛЬФА" data-price="1750">РЕГБИЗ + РКО АЛЬФА · 1 750 ₽</button>
+          <button type="button" data-val="РКО ОЗОН" data-price="500">РКО ОЗОН · 500 ₽</button>
+          <button type="button" data-val="РКО СБЕР" data-price="500">РКО СБЕР · 500 ₽</button>
+          <button type="button" data-val="РКО УРАЛСИБ" data-price="500">РКО УРАЛСИБ · 500 ₽</button>
+          <button type="button" data-val="РКО ТИНКОФФ" data-price="500">РКО ТИНКОФФ · 500 ₽</button>
         </div>
       </div>
       <div class="field">
@@ -908,6 +909,7 @@
               <th>Юзер</th>
               <th>Оформил</th>
               <th>Прибыль</th>
+              <th>Выплата</th>
               <th></th>
             </tr>
           </thead>
@@ -955,7 +957,6 @@ const DEFAULT_SETTINGS = { managerPct: 3, mopPct: 12, splitPct: 50 };
 let deals = [];
 let expenses = [];
 let rkoLeads = [];
-let rkoDoydet = 0;
 let settings = { ...DEFAULT_SETTINGS };
 let mopWhoSelected = "МОП";
 let lastAddedId = null;
@@ -1013,7 +1014,6 @@ let currentProject = 'vkider';
 let dealsRef = null;
 let expensesRef = null;
 let rkoRef = null;
-let rkoDoydetRef = null;
 
 async function migrateLegacyDataIfNeeded(){
   try{
@@ -1039,17 +1039,14 @@ function attachProjectListeners(project){
   if(dealsRef) dealsRef.off();
   if(expensesRef) expensesRef.off();
   if(rkoRef) rkoRef.off();
-  if(rkoDoydetRef) rkoDoydetRef.off();
   deals = [];
   expenses = [];
   rkoLeads = [];
-  rkoDoydet = 0;
   render();
 
   dealsRef = db.ref(`projects/${project}/deals`);
   expensesRef = db.ref(`projects/${project}/expenses`);
   rkoRef = db.ref(`projects/${project}/rkoLeads`);
-  rkoDoydetRef = db.ref(`projects/${project}/rkoDoydet`);
 
   dealsRef.on('value', snap => {
     deals = snap.val() || [];
@@ -1069,20 +1066,10 @@ function attachProjectListeners(project){
     dataReady.rko = true;
     render();
   }, err => console.error('Firebase rkoLeads error', err));
-
-  rkoDoydetRef.on('value', snap => {
-    rkoDoydet = snap.val() || 0;
-    render();
-  }, err => console.error('Firebase rkoDoydet error', err));
 }
 
 async function saveRkoLeads(){
   try{ await db.ref(`projects/${currentProject}/rkoLeads`).set(rkoLeads); }
-  catch(e){ console.error('Firebase save error', e); }
-}
-
-async function saveRkoDoydet(){
-  try{ await db.ref(`projects/${currentProject}/rkoDoydet`).set(rkoDoydet); }
   catch(e){ console.error('Firebase save error', e); }
 }
 
@@ -1370,32 +1357,23 @@ function render(){
 function renderRko(){
   const count = rkoLeads.length;
   const netProfit = rkoLeads.reduce((s,l) => s + l.profit, 0);
+  const paidTotal = rkoLeads.filter(l => l.paid).reduce((s,l) => s + l.profit, 0);
+  const pendingTotal = rkoLeads.filter(l => !l.paid).reduce((s,l) => s + l.profit, 0);
 
   const grid = document.getElementById('rkoStats');
   if(!grid.dataset.built){
     grid.innerHTML = `
       <div class="vault rko"><div class="who">Лидов</div><div class="amt" id="rkoCount">0</div></div>
       <div class="vault rko"><div class="who">Чистая прибыль</div><div class="amt" id="rkoProfitTotal">0 ₽</div></div>
-      <div class="vault rko"><div class="who">Дойдёт</div><input type="number" min="0" step="1" class="vault-input" id="rkoDoydetInput" placeholder="0"></div>
+      <div class="vault ya"><div class="who">Пришло</div><div class="amt" id="rkoPaidTotal">0 ₽</div></div>
+      <div class="vault mop"><div class="who">Дойдёт</div><div class="amt" id="rkoPendingTotal">0 ₽</div></div>
     `;
     grid.dataset.built = '1';
-    const doydetInput = document.getElementById('rkoDoydetInput');
-    const commitDoydet = async () => {
-      const val = parseFloat(doydetInput.value) || 0;
-      rkoDoydet = val;
-      await saveRkoDoydet();
-    };
-    doydetInput.addEventListener('blur', commitDoydet);
-    doydetInput.addEventListener('keydown', (e) => {
-      if(e.key === 'Enter'){ e.preventDefault(); doydetInput.blur(); }
-    });
   }
   document.getElementById('rkoCount').textContent = count;
   animTarget('rkoProfitTotal', netProfit);
-  const doydetInput = document.getElementById('rkoDoydetInput');
-  if(document.activeElement !== doydetInput){
-    doydetInput.value = rkoDoydet || '';
-  }
+  animTarget('rkoPaidTotal', paidTotal);
+  animTarget('rkoPendingTotal', pendingTotal);
 
   document.getElementById('rkoCountBadge').textContent = count ? `(${count})` : '';
 
@@ -1409,15 +1387,28 @@ function renderRko(){
     const rows = [...rkoLeads].reverse().map(l => {
       const dateStr = new Date(l.date).toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit'});
       const enterClass = (l.id === lastAddedRkoId) ? ' enter' : '';
+      const paid = !!l.paid;
+      const statusClass = paid ? 'ya' : 'mop';
+      const statusLabel = paid ? 'Пришло' : 'Ожидает';
       return `<tr class="${enterClass.trim()}">
         <td>${dateStr}</td>
         <td class="name-cell">${escapeHtml(l.client)}</td>
         <td class="name-cell">${escapeHtml(l.offers.join(', '))}</td>
         <td>${fmt(l.profit)}</td>
+        <td><button class="who-tag ${statusClass} status-toggle" data-id="${l.id}" style="border:none; cursor:pointer;">${statusLabel}</button></td>
         <td><button class="del-btn" data-id="${l.id}">убрать</button></td>
       </tr>`;
     }).join('');
     body.innerHTML = rows;
+    body.querySelectorAll('.status-toggle').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        const lead = rkoLeads.find(l => String(l.id) === id);
+        if(lead){ lead.paid = !lead.paid; }
+        await saveRkoLeads();
+        render();
+      });
+    });
     body.querySelectorAll('.del-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const id = btn.getAttribute('data-id');
@@ -1555,7 +1546,8 @@ document.getElementById('rkoForm').addEventListener('submit', async (e) => {
     date: new Date().toISOString(),
     client,
     offers,
-    profit
+    profit,
+    paid: false
   });
   lastAddedRkoId = id;
   await saveRkoLeads();
