@@ -269,6 +269,19 @@
   .vault.ya::before{background:var(--ya);}
   .vault.roma::before{background:var(--roma);}
   .vault.rko::before{background:var(--gold);}
+  #rkoStats .vault{ flex:1; min-width:140px; }
+  .vault-input{
+    width:100%;
+    background:transparent;
+    border:none;
+    border-bottom:1px solid var(--line-strong);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:19px;
+    font-weight:600;
+    color:var(--text);
+    padding:2px 0;
+  }
+  .vault-input:focus{ outline:none; border-bottom-color:var(--gold); }
   .vault .who{
     font-size:13px;
     color:var(--text-soft);
@@ -852,7 +865,7 @@
   </header>
   <p class="tagline">Лиды на открытие счетов — прибыль по каждому вносится вручную.</p>
 
-  <section class="vaults" id="rkoStats" style="grid-template-columns:repeat(2,1fr);"></section>
+  <section class="vaults" id="rkoStats" style="display:flex; flex-wrap:wrap; gap:14px;"></section>
 
   <section class="panel">
     <h2>Новый лид</h2>
@@ -942,6 +955,7 @@ const DEFAULT_SETTINGS = { managerPct: 3, mopPct: 12, splitPct: 50 };
 let deals = [];
 let expenses = [];
 let rkoLeads = [];
+let rkoDoydet = 0;
 let settings = { ...DEFAULT_SETTINGS };
 let mopWhoSelected = "МОП";
 let lastAddedId = null;
@@ -999,6 +1013,7 @@ let currentProject = 'vkider';
 let dealsRef = null;
 let expensesRef = null;
 let rkoRef = null;
+let rkoDoydetRef = null;
 
 async function migrateLegacyDataIfNeeded(){
   try{
@@ -1024,14 +1039,17 @@ function attachProjectListeners(project){
   if(dealsRef) dealsRef.off();
   if(expensesRef) expensesRef.off();
   if(rkoRef) rkoRef.off();
+  if(rkoDoydetRef) rkoDoydetRef.off();
   deals = [];
   expenses = [];
   rkoLeads = [];
+  rkoDoydet = 0;
   render();
 
   dealsRef = db.ref(`projects/${project}/deals`);
   expensesRef = db.ref(`projects/${project}/expenses`);
   rkoRef = db.ref(`projects/${project}/rkoLeads`);
+  rkoDoydetRef = db.ref(`projects/${project}/rkoDoydet`);
 
   dealsRef.on('value', snap => {
     deals = snap.val() || [];
@@ -1051,10 +1069,20 @@ function attachProjectListeners(project){
     dataReady.rko = true;
     render();
   }, err => console.error('Firebase rkoLeads error', err));
+
+  rkoDoydetRef.on('value', snap => {
+    rkoDoydet = snap.val() || 0;
+    render();
+  }, err => console.error('Firebase rkoDoydet error', err));
 }
 
 async function saveRkoLeads(){
   try{ await db.ref(`projects/${currentProject}/rkoLeads`).set(rkoLeads); }
+  catch(e){ console.error('Firebase save error', e); }
+}
+
+async function saveRkoDoydet(){
+  try{ await db.ref(`projects/${currentProject}/rkoDoydet`).set(rkoDoydet); }
   catch(e){ console.error('Firebase save error', e); }
 }
 
@@ -1348,11 +1376,26 @@ function renderRko(){
     grid.innerHTML = `
       <div class="vault rko"><div class="who">Лидов</div><div class="amt" id="rkoCount">0</div></div>
       <div class="vault rko"><div class="who">Чистая прибыль</div><div class="amt" id="rkoProfitTotal">0 ₽</div></div>
+      <div class="vault rko"><div class="who">Дойдёт</div><input type="number" min="0" step="1" class="vault-input" id="rkoDoydetInput" placeholder="0"></div>
     `;
     grid.dataset.built = '1';
+    const doydetInput = document.getElementById('rkoDoydetInput');
+    const commitDoydet = async () => {
+      const val = parseFloat(doydetInput.value) || 0;
+      rkoDoydet = val;
+      await saveRkoDoydet();
+    };
+    doydetInput.addEventListener('blur', commitDoydet);
+    doydetInput.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter'){ e.preventDefault(); doydetInput.blur(); }
+    });
   }
   document.getElementById('rkoCount').textContent = count;
   animTarget('rkoProfitTotal', netProfit);
+  const doydetInput = document.getElementById('rkoDoydetInput');
+  if(document.activeElement !== doydetInput){
+    doydetInput.value = rkoDoydet || '';
+  }
 
   document.getElementById('rkoCountBadge').textContent = count ? `(${count})` : '';
 
