@@ -8,32 +8,36 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..700&family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#12151A;
-    --panel:#1A1F26;
-    --panel-raise:#1F252D;
-    --line:rgba(255,255,255,0.08);
-    --line-strong:rgba(255,255,255,0.16);
-    --gold:#C9A227;
-    --gold-soft:rgba(201,162,39,0.14);
-    --text:#EDEAE1;
-    --text-soft:#8D93A0;
+    --bg:#0A0C10;
+    --panel:#14171D;
+    --panel-raise:#1B1F26;
+    --line:rgba(255,255,255,0.06);
+    --line-strong:rgba(255,255,255,0.13);
+    --gold:#4C8DFF;
+    --gold-soft:rgba(76,141,255,0.16);
+    --text:#F3F4F6;
+    --text-soft:#868D9B;
     --manager:#6EA8C9;
     --mop:#FFC75E;
     --ya:#85DEAC;
     --roma:#F194AF;
-    --danger:#D97469;
+    --danger:#E5675F;
+    --icon-green:#34D399;
+    --icon-green-soft:rgba(52,211,153,0.14);
+    --icon-orange:#F5A623;
+    --icon-orange-soft:rgba(245,166,35,0.14);
+    --icon-purple:#A78BFA;
+    --icon-purple-soft:rgba(167,139,250,0.14);
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html{overflow-x:hidden;}
   body{
     margin:0;
     overflow-x:hidden;
-    background:
-      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(201,162,39,0.08), transparent),
-      var(--bg);
+    background:var(--bg);
     color:var(--text);
     font-family:'Inter',sans-serif;
     -webkit-font-smoothing:antialiased;
@@ -64,9 +68,7 @@
     align-items:center;
     justify-content:center;
     padding:24px;
-    background:
-      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(201,162,39,0.08), transparent),
-      var(--bg);
+    background:var(--bg);
     transition:opacity .5s ease, filter .5s ease, transform .5s ease;
   }
   .gate-screen.gate-exit{
@@ -81,7 +83,7 @@
     text-align:center;
     padding:38px 30px;
     border:1px solid var(--line);
-    border-radius:10px;
+    border-radius:22px;
     background:var(--panel);
     animation:gateCardIn .7s cubic-bezier(.19,1,.22,1);
   }
@@ -97,8 +99,8 @@
     40%,60%{ transform:translateX(6px); }
   }
   .gate-title{
-    font-family:'Fraunces',serif;
-    font-weight:600;
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
     font-size:26px;
     margin:0 0 6px;
     letter-spacing:-0.01em;
@@ -139,7 +141,7 @@
   /* ---------- summary ---------- */
   .summary-project{
     border:1px solid var(--line);
-    border-radius:8px;
+    border-radius:18px;
     padding:22px 20px;
     margin-bottom:16px;
     background:var(--panel);
@@ -192,9 +194,9 @@
     flex-shrink:0;
   }
   header.top h1{
-    font-family:'Fraunces',serif;
-    font-weight:600;
-    font-size:30px;
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:28px;
     margin:0;
     letter-spacing:-0.01em;
   }
@@ -206,42 +208,66 @@
   }
   .gold-rule{
     height:1px;
-    background:linear-gradient(90deg, var(--gold) 0%, rgba(201,162,39,0.15) 55%, transparent 100%);
+    background:linear-gradient(90deg, var(--gold) 0%, rgba(76,141,255,0.15) 55%, transparent 100%);
     margin-bottom:34px;
+    opacity:0.6;
   }
 
   /* ---------- hero ---------- */
   .hero-grid{
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:0;
-    margin-bottom:36px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:14px;
+    margin-bottom:32px;
   }
   .hero-item{
-    padding:0 24px;
-    border-left:1px solid var(--line);
+    flex:1;
+    min-width:190px;
+    background:var(--panel);
+    border-radius:18px;
+    padding:20px 20px 22px;
   }
-  .hero-item:first-child{
-    padding-left:0;
-    border-left:none;
+  .hero-item-top{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:22px;
   }
+  .stat-icon{
+    width:38px;
+    height:38px;
+    border-radius:11px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+  }
+  .stat-icon svg{
+    width:19px;
+    height:19px;
+    fill:none;
+    stroke:currentColor;
+  }
+  .stat-icon.icon-green{background:var(--icon-green-soft); color:var(--icon-green);}
+  .stat-icon.icon-orange{background:var(--icon-orange-soft); color:var(--icon-orange);}
+  .stat-icon.icon-purple{background:var(--icon-purple-soft); color:var(--icon-purple);}
   .hero-item .label{
     font-family:'Space Grotesk',sans-serif;
-    font-size:12px;
-    letter-spacing:0.04em;
+    font-size:12.5px;
+    letter-spacing:0.02em;
     color:var(--text-soft);
-    margin-bottom:8px;
   }
   .hero-item .value{
-    font-family:'Fraunces',serif;
-    font-weight:500;
-    font-size:34px;
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:26px;
     letter-spacing:-0.01em;
     line-height:1;
     white-space:nowrap;
   }
-  .hero-item.profit .value{color:var(--ya);}
-  .hero-item.expense .value{color:var(--danger);}
+  .hero-item.profit .value{color:var(--icon-purple);}
+  .hero-item.expense .value{color:var(--icon-orange);}
 
   /* ---------- vaults (totals) ---------- */
   .vaults{
@@ -252,9 +278,8 @@
   }
   .vault{
     background:var(--panel);
-    border:1px solid var(--line);
-    border-radius:6px;
-    padding:18px 16px 16px;
+    border-radius:18px;
+    padding:20px 18px 18px;
     position:relative;
     overflow:hidden;
   }
@@ -262,7 +287,7 @@
     content:"";
     position:absolute;
     top:0;left:0;right:0;
-    height:2px;
+    height:3px;
   }
   .vault.manager::before{background:var(--manager);}
   .vault.mop::before{background:var(--mop);}
@@ -275,9 +300,9 @@
     background:transparent;
     border:none;
     border-bottom:1px solid var(--line-strong);
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Space Grotesk',sans-serif;
     font-size:19px;
-    font-weight:600;
+    font-weight:700;
     color:var(--text);
     padding:2px 0;
   }
@@ -288,9 +313,9 @@
     margin-bottom:10px;
   }
   .vault .amt{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:19px;
-    font-weight:600;
+    font-family:'Space Grotesk',sans-serif;
+    font-size:20px;
+    font-weight:700;
     white-space:nowrap;
     color:var(--text);
   }
@@ -325,8 +350,7 @@
   /* ---------- panels ---------- */
   .panel{
     background:var(--panel);
-    border:1px solid var(--line);
-    border-radius:8px;
+    border-radius:18px;
     padding:26px 24px;
     margin-bottom:26px;
   }
@@ -405,7 +429,7 @@
   .multi-chip button.active{
     background:var(--gold);
     border-color:var(--gold);
-    color:#1A1500;
+    color:#fff;
     font-weight:600;
   }
 
@@ -428,7 +452,7 @@
     display:flex;
     background:rgba(255,255,255,0.04);
     border:1px solid var(--line);
-    border-radius:6px;
+    border-radius:14px;
     padding:3px;
   }
   .segmented .pill{
@@ -437,7 +461,7 @@
     width:calc(50% - 3px);
     left:3px;
     background:var(--ya);
-    border-radius:4px;
+    border-radius:11px;
     transition:transform .22s cubic-bezier(.4,0,.2,1);
     z-index:0;
   }
@@ -460,7 +484,7 @@
     display:flex;
     background:rgba(255,255,255,0.04);
     border:1px solid var(--line);
-    border-radius:6px;
+    border-radius:14px;
     overflow:hidden;
   }
   .chip-toggle button{
@@ -478,7 +502,7 @@
   .chip-toggle button:first-child{border-left:none;}
   .chip-toggle button.active{
     background:var(--gold);
-    color:#1A1500;
+    color:#fff;
     font-weight:600;
   }
   .chip-toggle button:focus-visible{
@@ -502,7 +526,7 @@
     font-size:14px;
     font-weight:600;
     padding:12px 10px;
-    border-radius:6px;
+    border-radius:14px;
     cursor:pointer;
     transition:background .15s ease, color .15s ease, border-color .15s ease;
   }
@@ -521,7 +545,7 @@
     font-size:14px;
     font-weight:600;
     padding:14px 10px;
-    border-radius:6px;
+    border-radius:14px;
     cursor:pointer;
     margin-bottom:8px;
     transition:background .15s ease, color .15s ease, border-color .15s ease;
@@ -532,20 +556,47 @@
     color:var(--gold);
   }
 
+  .undo-bar{
+    display:flex;
+    gap:8px;
+    margin-bottom:22px;
+  }
+  .undo-bar button{
+    flex:1;
+    border:1px solid var(--line);
+    background:rgba(255,255,255,0.03);
+    color:var(--text-soft);
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+    font-weight:600;
+    padding:10px 8px;
+    border-radius:12px;
+    cursor:pointer;
+    transition:background .15s ease, color .15s ease, border-color .15s ease, opacity .15s ease;
+  }
+  .undo-bar button:not(:disabled):hover{
+    border-color:var(--gold);
+    color:var(--gold);
+  }
+  .undo-bar button:disabled{
+    opacity:0.35;
+    cursor:default;
+  }
+
   .submit-row{
     grid-column:1 / -1;
     margin-top:6px;
   }
   button.primary{
     background:var(--gold);
-    color:#1A1500;
+    color:#fff;
     border:none;
     padding:11px 20px;
     font-family:'Space Grotesk',sans-serif;
     font-size:14px;
     font-weight:600;
     cursor:pointer;
-    border-radius:5px;
+    border-radius:12px;
     transition:filter .15s ease, transform .1s ease;
   }
   button.primary:hover{filter:brightness(1.08);}
@@ -633,7 +684,7 @@
     pointer-events:none;
     background:var(--panel-raise);
     border:1px solid var(--line-strong);
-    border-radius:6px;
+    border-radius:10px;
     padding:6px 11px;
     font-family:'IBM Plex Mono',monospace;
     font-size:12.5px;
@@ -656,10 +707,6 @@
   @media (max-width:720px){
     .vaults{grid-template-columns:repeat(2,1fr);}
     form.deal-form{grid-template-columns:1fr 1fr;}
-    .hero-grid{grid-template-columns:1fr; gap:16px;}
-    .hero-item{border-left:none; padding-left:0; border-top:1px solid var(--line); padding-top:16px;}
-    .hero-item:first-child{border-top:none; padding-top:0;}
-    .hero-item .value{font-size:28px;}
   }
 </style>
 </head>
@@ -668,11 +715,11 @@
 <div id="gateScreen" class="gate-screen">
   <div class="gate-card">
     <svg class="mark" viewBox="0 0 26 26" fill="none" style="width:40px;height:40px;margin:0 auto 18px;display:block;">
-      <circle cx="13" cy="13" r="12" stroke="#C9A227" stroke-width="1.4"/>
-      <path d="M8 15.5C8 12.5 10.5 11 13 11C15.5 11 18 12.5 18 10.2" stroke="#C9A227" stroke-width="1.4" stroke-linecap="round"/>
+      <circle cx="13" cy="13" r="12" stroke="#4C8DFF" stroke-width="1.4"/>
+      <path d="M8 15.5C8 12.5 10.5 11 13 11C15.5 11 18 12.5 18 10.2" stroke="#4C8DFF" stroke-width="1.4" stroke-linecap="round"/>
       <path d="M8 15.8C8.7 17.6 10.6 18.6 13 18.6C15.4 18.6 17.4 17.6 18 15.8" stroke="#EDEAE1" stroke-width="1.4" stroke-linecap="round"/>
-      <line x1="13" y1="7.6" x2="13" y2="9.4" stroke="#C9A227" stroke-width="1.2"/>
-      <line x1="13" y1="16.6" x2="13" y2="18.4" stroke="#C9A227" stroke-width="1.2"/>
+      <line x1="13" y1="7.6" x2="13" y2="9.4" stroke="#4C8DFF" stroke-width="1.2"/>
+      <line x1="13" y1="16.6" x2="13" y2="18.4" stroke="#4C8DFF" stroke-width="1.2"/>
     </svg>
     <h1 class="gate-title">Касса</h1>
     <p class="gate-sub">Введите код доступа</p>
@@ -688,11 +735,11 @@
 
   <header class="top">
     <svg class="mark" viewBox="0 0 26 26" fill="none">
-      <circle cx="13" cy="13" r="12" stroke="#C9A227" stroke-width="1.4"/>
-      <path d="M8 15.5C8 12.5 10.5 11 13 11C15.5 11 18 12.5 18 10.2" stroke="#C9A227" stroke-width="1.4" stroke-linecap="round"/>
+      <circle cx="13" cy="13" r="12" stroke="#4C8DFF" stroke-width="1.4"/>
+      <path d="M8 15.5C8 12.5 10.5 11 13 11C15.5 11 18 12.5 18 10.2" stroke="#4C8DFF" stroke-width="1.4" stroke-linecap="round"/>
       <path d="M8 15.8C8.7 17.6 10.6 18.6 13 18.6C15.4 18.6 17.4 17.6 18 15.8" stroke="#EDEAE1" stroke-width="1.4" stroke-linecap="round"/>
-      <line x1="13" y1="7.6" x2="13" y2="9.4" stroke="#C9A227" stroke-width="1.2"/>
-      <line x1="13" y1="16.6" x2="13" y2="18.4" stroke="#C9A227" stroke-width="1.2"/>
+      <line x1="13" y1="7.6" x2="13" y2="9.4" stroke="#4C8DFF" stroke-width="1.2"/>
+      <line x1="13" y1="16.6" x2="13" y2="18.4" stroke="#4C8DFF" stroke-width="1.2"/>
     </svg>
     <h1>Касса</h1>
   </header>
@@ -707,21 +754,41 @@
     </div>
   </div>
 
+  <div class="undo-bar" id="undoBar">
+    <button type="button" id="undoBtn" disabled>↶ Отменить</button>
+    <button type="button" id="redoBtn" disabled>↷ Повторить</button>
+  </div>
+
   <div id="kassaSections">
 
   <div class="gold-rule"></div>
 
   <div class="hero-grid">
     <div class="hero-item revenue">
-      <div class="label">ВЫРУЧКА</div>
+      <div class="hero-item-top">
+        <div class="label">ВЫРУЧКА</div>
+        <div class="stat-icon icon-green">
+          <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h11l4 4v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke-width="1.6" stroke-linejoin="round"/><path d="M16 12a2 2 0 1 0 0 .01" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </div>
+      </div>
       <div class="value" id="heroRevenue">0 ₽</div>
     </div>
     <div class="hero-item profit">
-      <div class="label">ЧИСТАЯ ПРИБЫЛЬ</div>
+      <div class="hero-item-top">
+        <div class="label">ЧИСТАЯ ПРИБЫЛЬ</div>
+        <div class="stat-icon icon-purple">
+          <svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7h6v6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
       <div class="value" id="heroProfit">0 ₽</div>
     </div>
     <div class="hero-item expense">
-      <div class="label">РАСХОД</div>
+      <div class="hero-item-top">
+        <div class="label">РАСХОД</div>
+        <div class="stat-icon icon-orange">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" stroke-width="1.6"/><path d="M12 7.5V12l3 2" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
       <div class="value" id="heroExpense">0 ₽</div>
     </div>
   </div>
@@ -974,13 +1041,10 @@ function computeDistribution(){
   const expenseTotal = expenses.reduce((s,e) => s + e.amount, 0);
   const netProfit = revenue - expenseTotal;
 
-  // Выручка − % МОПа и Макса = сумма
-  const managerTotal = revenue * settings.managerPct / 100;
-  const mopPoolTotal = revenue > 0 ? revenue * settings.mopPct / 100 : 0;
-  const afterCuts = revenue - managerTotal - mopPoolTotal;
-
-  // сумма − расход = делим 50/50 дальше с Ромой
-  const remainderPool = afterCuts - expenseTotal;
+  // Выручка − расход = делим
+  const managerTotal = netProfit * settings.managerPct / 100;
+  const mopPoolTotal = revenue > 0 ? netProfit * settings.mopPct / 100 : 0;
+  const remainderPool = netProfit - managerTotal - mopPoolTotal;
   const yaBase = remainderPool * settings.splitPct / 100;
   const romaTotal = remainderPool - yaBase;
 
@@ -999,11 +1063,12 @@ function computeDistribution(){
 }
 
 function computeDealSplit(d, revenue, expenseTotal){
-  const managerCut = d.payment * settings.managerPct / 100;
-  const mopCut = d.payment * settings.mopPct / 100;
-  const afterCuts = d.payment - managerCut - mopCut;
-  const expenseShare = revenue > 0 ? expenseTotal * (d.payment / revenue) : 0;
-  const remainder = afterCuts - expenseShare;
+  const netProfit = revenue - expenseTotal;
+  const share = revenue > 0 ? d.payment / revenue : 0;
+  const dealNet = netProfit * share;
+  const managerCut = dealNet * settings.managerPct / 100;
+  const mopCut = dealNet * settings.mopPct / 100;
+  const remainder = dealNet - managerCut - mopCut;
   const yaBase = remainder * settings.splitPct / 100;
   const romaShare = remainder - yaBase;
   const yaShare = (d.mopWho === 'Илья' || d.mopWho === 'Я') ? (yaBase + mopCut) : yaBase;
@@ -1043,6 +1108,9 @@ function attachProjectListeners(project){
   deals = [];
   expenses = [];
   rkoLeads = [];
+  undoStack = [];
+  redoStack = [];
+  updateUndoRedoButtons();
   render();
 
   dealsRef = db.ref(`projects/${project}/deals`);
@@ -1073,6 +1141,61 @@ async function saveRkoLeads(){
   try{ await db.ref(`projects/${currentProject}/rkoLeads`).set(rkoLeads); }
   catch(e){ console.error('Firebase save error', e); }
 }
+
+// ---------- undo / redo ----------
+let undoStack = [];
+let redoStack = [];
+
+function snapshotState(){
+  return {
+    deals: JSON.parse(JSON.stringify(deals)),
+    expenses: JSON.parse(JSON.stringify(expenses)),
+    rkoLeads: JSON.parse(JSON.stringify(rkoLeads))
+  };
+}
+
+function pushUndo(){
+  undoStack.push(snapshotState());
+  if(undoStack.length > 50) undoStack.shift();
+  redoStack = [];
+  updateUndoRedoButtons();
+}
+
+function updateUndoRedoButtons(){
+  const undoBtn = document.getElementById('undoBtn');
+  const redoBtn = document.getElementById('redoBtn');
+  if(!undoBtn || !redoBtn) return;
+  undoBtn.disabled = undoStack.length === 0;
+  redoBtn.disabled = redoStack.length === 0;
+}
+
+async function applySnapshot(snap){
+  deals = snap.deals;
+  expenses = snap.expenses;
+  rkoLeads = snap.rkoLeads;
+  await Promise.all([saveDeals(), saveExpenses(), saveRkoLeads()]);
+  render();
+  updateUndoRedoButtons();
+}
+
+async function undoAction(){
+  if(undoStack.length === 0) return;
+  const current = snapshotState();
+  const prev = undoStack.pop();
+  redoStack.push(current);
+  await applySnapshot(prev);
+}
+
+async function redoAction(){
+  if(redoStack.length === 0) return;
+  const current = snapshotState();
+  const next = redoStack.pop();
+  undoStack.push(current);
+  await applySnapshot(next);
+}
+
+document.getElementById('undoBtn').addEventListener('click', undoAction);
+document.getElementById('redoBtn').addEventListener('click', redoAction);
 
 async function saveDeals(){
   try{ await db.ref(`projects/${currentProject}/deals`).set(deals); }
@@ -1215,6 +1338,7 @@ function renderTable(){
     body.innerHTML = rows;
     body.querySelectorAll('.del-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
+        pushUndo();
         const id = btn.getAttribute('data-id');
         deals = deals.filter(d => String(d.id) !== id);
         await saveDeals();
@@ -1250,6 +1374,7 @@ function renderExpensesTable(){
     body.innerHTML = rows;
     body.querySelectorAll('.del-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
+        pushUndo();
         const id = btn.getAttribute('data-id');
         expenses = expenses.filter(e => String(e.id) !== id);
         await saveExpenses();
@@ -1316,15 +1441,21 @@ function renderChart(){
     const x = padLeft + i * (barWidth + barGap);
     const y = padTop + chartH - h;
     const label = new Date(day).toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit'});
-    bars += `<rect class="bar-rect" data-date="${label}" data-value="${val}" x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="4" fill="url(#barGrad)"/>`;
-    bars += `<text x="${x + barWidth/2}" y="${H-10}" text-anchor="middle" font-size="11" style="fill:#8D93A0" font-family="Inter">${label}</text>`;
+    const isLast = (i === days.length - 1);
+    const fill = isLast ? 'url(#barGradActive)' : 'url(#barGrad)';
+    bars += `<rect class="bar-rect" data-date="${label}" data-value="${val}" x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="8" fill="${fill}"/>`;
+    bars += `<text x="${x + barWidth/2}" y="${H-10}" text-anchor="middle" font-size="11" style="fill:#868D9B" font-family="Inter">${label}</text>`;
   });
 
   svg.innerHTML = `
     <defs>
       <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#E4C158"/>
-        <stop offset="100%" stop-color="#8A6A1C"/>
+        <stop offset="0%" stop-color="#22344F"/>
+        <stop offset="100%" stop-color="#182231"/>
+      </linearGradient>
+      <linearGradient id="barGradActive" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#5B9CFF"/>
+        <stop offset="100%" stop-color="#3B6FE0"/>
       </linearGradient>
     </defs>
     ${grid}
@@ -1403,6 +1534,7 @@ function renderRko(){
     body.innerHTML = rows;
     body.querySelectorAll('.status-toggle').forEach(btn => {
       btn.addEventListener('click', async () => {
+        pushUndo();
         const id = btn.getAttribute('data-id');
         const lead = rkoLeads.find(l => String(l.id) === id);
         if(lead){ lead.paid = !lead.paid; }
@@ -1412,6 +1544,7 @@ function renderRko(){
     });
     body.querySelectorAll('.del-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
+        pushUndo();
         const id = btn.getAttribute('data-id');
         rkoLeads = rkoLeads.filter(l => String(l.id) !== id);
         await saveRkoLeads();
@@ -1466,6 +1599,7 @@ document.getElementById('dealForm').addEventListener('submit', async (e) => {
   const client = document.getElementById('fClient').value.trim();
   const payment = parseFloat(document.getElementById('fPayment').value);
   if(!client || isNaN(payment)) return;
+  pushUndo();
   const id = Date.now();
   deals.push({
     id,
@@ -1490,6 +1624,7 @@ document.getElementById('expenseForm').addEventListener('submit', async (e) => {
   const title = document.getElementById('eTitle').value.trim();
   const amount = parseFloat(document.getElementById('eAmount').value);
   if(!title || isNaN(amount)) return;
+  pushUndo();
   const id = Date.now();
   expenses.push({
     id,
@@ -1535,6 +1670,7 @@ document.getElementById('rkoForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const client = document.getElementById('rkoClient').value.trim();
   if(!client || selectedOffers.size === 0) return;
+  pushUndo();
   let profit = 0;
   const offers = [];
   rkoOffersEl.querySelectorAll('button.active').forEach(b => {
