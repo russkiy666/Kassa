@@ -101,9 +101,10 @@
   .gate-title{
     font-family:'Space Grotesk',sans-serif;
     font-weight:700;
-    font-size:26px;
+    font-size:21px;
     margin:0 0 6px;
-    letter-spacing:-0.01em;
+    letter-spacing:0.01em;
+    line-height:1.25;
   }
   .gate-sub{
     color:var(--text-soft);
@@ -137,6 +138,105 @@
     transition:opacity .2s ease;
   }
   .gate-error.show{ opacity:1; }
+
+  .project-lock-overlay{
+    position:fixed;
+    inset:0;
+    z-index:900;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    background:rgba(6,7,9,0.72);
+    backdrop-filter:blur(4px);
+    -webkit-backdrop-filter:blur(4px);
+  }
+  .gate-cancel{
+    display:block;
+    width:100%;
+    margin-top:12px;
+    background:none;
+    border:none;
+    color:var(--text-soft);
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+    cursor:pointer;
+    padding:6px;
+  }
+  .gate-cancel:hover{ color:var(--text); }
+
+  /* ---------- launcher ---------- */
+  .launcher-card{
+    max-width:360px;
+  }
+  .glow-text{
+    animation:glowPulse 3.2s ease-in-out infinite;
+  }
+  @keyframes glowPulse{
+    0%, 100%{ text-shadow:0 0 14px rgba(76,141,255,0.25), 0 0 2px rgba(76,141,255,0.4); }
+    50%{ text-shadow:0 0 26px rgba(76,141,255,0.55), 0 0 6px rgba(76,141,255,0.6); }
+  }
+  #chooseProjectBtn{
+    margin-top:6px;
+    transition:opacity .35s ease, transform .35s ease, max-height .35s ease;
+  }
+  #chooseProjectBtn.hidden-collapse{
+    opacity:0;
+    transform:scale(.96);
+    max-height:0;
+    padding-top:0;
+    padding-bottom:0;
+    overflow:hidden;
+    pointer-events:none;
+    margin:0;
+  }
+  .launcher-projects{
+    margin-top:4px;
+    opacity:0;
+    transform:translateY(10px);
+    transition:opacity .4s cubic-bezier(.19,1,.22,1), transform .4s cubic-bezier(.19,1,.22,1);
+  }
+  .launcher-projects.revealed{
+    opacity:1;
+    transform:translateY(0);
+  }
+  .launcher-projects .form-tabs-wide,
+  .launcher-projects .project-branch{
+    opacity:0;
+    transform:translateY(8px);
+    transition:opacity .4s ease, transform .4s ease;
+  }
+  .launcher-projects.revealed .form-tabs-wide{
+    opacity:1; transform:translateY(0);
+    transition-delay:.05s;
+  }
+  .launcher-projects.revealed .project-branches .project-branch:nth-child(1){ opacity:1; transform:translateY(0); transition-delay:.12s; }
+  .launcher-projects.revealed .project-branches .project-branch:nth-child(2){ opacity:1; transform:translateY(0); transition-delay:.19s; }
+  .launcher-projects.revealed .project-branches .project-branch:nth-child(3){ opacity:1; transform:translateY(0); transition-delay:.26s; }
+  .launcher-projects .project-branches{ margin-top:10px; }
+
+  .switch-project-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-bottom:26px;
+  }
+  .switch-project-btn{
+    flex-shrink:0;
+    border:1px solid var(--line);
+    background:rgba(255,255,255,0.03);
+    color:var(--text-soft);
+    font-family:'Inter',sans-serif;
+    font-size:12.5px;
+    font-weight:600;
+    padding:8px 14px;
+    border-radius:20px;
+    cursor:pointer;
+    transition:border-color .15s ease, color .15s ease;
+  }
+  .switch-project-btn:hover{ border-color:var(--gold); color:var(--gold); }
 
   /* ---------- summary ---------- */
   .summary-project{
@@ -560,6 +660,49 @@
     color:var(--gold);
   }
 
+  .project-branches{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .project-branch{
+    flex:1;
+    min-width:140px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:15px 16px;
+    cursor:pointer;
+    box-shadow:0 1px 0 rgba(255,255,255,0.03) inset, 0 6px 20px rgba(0,0,0,0.25);
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .project-branch .branch-name{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:15px;
+    color:var(--text);
+  }
+  .project-branch.active{
+    border-color:var(--gold);
+    background:var(--gold-soft);
+  }
+  .project-branch.active .branch-name{color:var(--gold);}
+  .branch-lock{
+    width:24px;
+    height:24px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--text-soft);
+    flex-shrink:0;
+  }
+  .branch-lock svg{width:14px; height:14px; fill:none; stroke:currentColor;}
+  .project-branch.unlocked .branch-lock{color:var(--icon-green);}
+
   .undo-bar{
     display:flex;
     gap:8px;
@@ -745,13 +888,66 @@
       <line x1="13" y1="7.6" x2="13" y2="9.4" stroke="#4C8DFF" stroke-width="1.2"/>
       <line x1="13" y1="16.6" x2="13" y2="18.4" stroke="#4C8DFF" stroke-width="1.2"/>
     </svg>
-    <h1 class="gate-title">Касса</h1>
+    <h1 class="gate-title">YAKIMOVICH PROD</h1>
     <p class="gate-sub">Введите код доступа</p>
     <form id="gateForm">
       <input id="gateCode" class="gate-input" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Код доступа">
       <button type="submit" class="primary gate-btn">Войти</button>
     </form>
     <p class="gate-error" id="gateError">Неверный код</p>
+  </div>
+</div>
+
+<div id="projectLockOverlay" class="project-lock-overlay" style="display:none;">
+  <div class="gate-card" id="projectLockCard">
+    <h1 class="gate-title" id="projectLockTitle">Проект</h1>
+    <p class="gate-sub">Введите код доступа к проекту</p>
+    <form id="projectLockForm">
+      <input id="projectLockInput" class="gate-input" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Код доступа">
+      <button type="submit" class="primary gate-btn">Войти</button>
+    </form>
+    <p class="gate-error" id="projectLockError">Неверный код</p>
+    <button type="button" class="gate-cancel" id="projectLockCancel">Отмена</button>
+  </div>
+</div>
+
+<div id="launcherScreen" class="gate-screen" style="display:none;">
+  <div class="gate-card launcher-card">
+    <svg class="mark" viewBox="0 0 26 26" fill="none" style="width:40px;height:40px;margin:0 auto 18px;display:block;">
+      <circle cx="13" cy="13" r="12" stroke="#4C8DFF" stroke-width="1.4"/>
+      <path d="M8 15.5C8 12.5 10.5 11 13 11C15.5 11 18 12.5 18 10.2" stroke="#4C8DFF" stroke-width="1.4" stroke-linecap="round"/>
+      <path d="M8 15.8C8.7 17.6 10.6 18.6 13 18.6C15.4 18.6 17.4 17.6 18 15.8" stroke="#EDEAE1" stroke-width="1.4" stroke-linecap="round"/>
+      <line x1="13" y1="7.6" x2="13" y2="9.4" stroke="#4C8DFF" stroke-width="1.2"/>
+      <line x1="13" y1="16.6" x2="13" y2="18.4" stroke="#4C8DFF" stroke-width="1.2"/>
+    </svg>
+    <h1 class="gate-title glow-text">YAKIMOVICH PROD</h1>
+    <p class="gate-sub">Учёт продаж и распределение долей</p>
+
+    <button type="button" class="primary gate-btn" id="chooseProjectBtn">Выбрать проект</button>
+
+    <div id="projectTabs" class="launcher-projects" style="display:none;">
+      <button type="button" data-project="summary" class="form-tabs-wide">Общая сводка</button>
+      <div class="project-branches" id="projectBranches">
+        <button type="button" class="project-branch" data-project="vkider">
+          <span class="branch-name">Рома</span>
+          <span class="branch-lock">
+            <svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2.5" stroke-width="1.6"/><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </span>
+        </button>
+        <button type="button" class="project-branch" data-project="artur">
+          <span class="branch-name">Артур</span>
+          <span class="branch-lock">
+            <svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2.5" stroke-width="1.6"/><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </span>
+        </button>
+        <button type="button" class="project-branch" data-project="ruslan">
+          <span class="branch-name">Руслан</span>
+          <span class="branch-lock">
+            <svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2.5" stroke-width="1.6"/><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </span>
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -767,15 +963,9 @@
     </svg>
     <h1>Касса</h1>
   </header>
-  <p class="tagline">Заносишь сделку — сумма сама расходится по доле каждого.</p>
-
-  <div id="projectTabs" style="margin-bottom:22px;">
-    <button type="button" data-project="summary" class="form-tabs-wide">Общая сводка</button>
-    <div class="form-tabs">
-      <button type="button" data-project="vkider" class="active">Вкидер</button>
-      <button type="button" data-project="artur">Артур</button>
-      <button type="button" data-project="ruslan">Руслан</button>
-    </div>
+  <div class="switch-project-row">
+    <span class="tagline" style="margin:0;">Заносишь сделку — сумма сама расходится по доле каждого.</span>
+    <button type="button" id="switchProjectBtn" class="switch-project-btn">Сменить проект ⇄</button>
   </div>
 
   <div class="undo-bar" id="undoBar">
@@ -1754,7 +1944,7 @@ document.getElementById('importBtn').addEventListener('click', async () => {
   status.textContent = `Добавлено сделок: ${added}.`;
 });
 
-const PROJECT_LABELS = { vkider: 'ВКИДЕР', artur: 'АРТУР', ruslan: 'РУСЛАН' };
+const PROJECT_LABELS = { vkider: 'РОМА', artur: 'АРТУР', ruslan: 'РУСЛАН' };
 
 async function loadProjectStats(project){
   const [dealsSnap, expensesSnap, rkoSnap] = await Promise.all([
@@ -1797,36 +1987,118 @@ async function renderSummary(){
   }).join('');
 }
 
+const PROJECT_CODES = { vkider: 'MM-KASSA', artur: 'WW-KASSA', ruslan: 'OO-KASSA' };
+const PROJECT_NAMES = { vkider: 'Рома', artur: 'Артур', ruslan: 'Руслан' };
+
+function getUnlockedProjects(){
+  try{ return JSON.parse(localStorage.getItem('kassa_unlocked_projects') || '[]'); }
+  catch(e){ return []; }
+}
+function isProjectUnlocked(project){
+  return getUnlockedProjects().includes(project);
+}
+function markProjectUnlocked(project){
+  const list = getUnlockedProjects();
+  if(!list.includes(project)){
+    list.push(project);
+    localStorage.setItem('kassa_unlocked_projects', JSON.stringify(list));
+  }
+  updateBranchLockIcons();
+}
+function updateBranchLockIcons(){
+  const unlocked = getUnlockedProjects();
+  document.querySelectorAll('.project-branch').forEach(b => {
+    b.classList.toggle('unlocked', unlocked.includes(b.getAttribute('data-project')));
+  });
+}
+
 const projectTabs = document.getElementById('projectTabs');
+const projectLockOverlay = document.getElementById('projectLockOverlay');
+const projectLockForm = document.getElementById('projectLockForm');
+const projectLockInput = document.getElementById('projectLockInput');
+const projectLockError = document.getElementById('projectLockError');
+const projectLockTitle = document.getElementById('projectLockTitle');
+const projectLockCancel = document.getElementById('projectLockCancel');
+const projectLockCard = document.getElementById('projectLockCard');
+let pendingProjectSwitch = null;
+
+function openProjectLock(project, btn){
+  pendingProjectSwitch = { project, btn };
+  projectLockTitle.textContent = PROJECT_NAMES[project] || project;
+  projectLockInput.value = '';
+  projectLockError.classList.remove('show');
+  projectLockOverlay.style.display = 'flex';
+  setTimeout(() => projectLockInput.focus(), 50);
+}
+function closeProjectLock(){
+  projectLockOverlay.style.display = 'none';
+  pendingProjectSwitch = null;
+}
+
+function activateProjectTab(project, btn){
+  projectTabs.querySelectorAll('button, .project-branch').forEach(b => b.classList.toggle('active', b === btn));
+  document.getElementById('summarySection').style.display = 'none';
+  document.getElementById('kassaSections').style.display = '';
+  document.getElementById('importPanel').style.display = (project === 'vkider') ? '' : 'none';
+  revealAppFromLauncher();
+  if(project === currentProject && dealsRef) return;
+  currentProject = project;
+  attachProjectListeners(project);
+}
+
+projectLockCancel.addEventListener('click', closeProjectLock);
+projectLockOverlay.addEventListener('click', (e) => { if(e.target === projectLockOverlay) closeProjectLock(); });
+
+projectLockForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  if(!pendingProjectSwitch) return;
+  const { project, btn } = pendingProjectSwitch;
+  const val = projectLockInput.value.trim().toUpperCase();
+  if(val === PROJECT_CODES[project]){
+    markProjectUnlocked(project);
+    closeProjectLock();
+    activateProjectTab(project, btn);
+  } else {
+    projectLockError.classList.add('show');
+    projectLockCard.classList.remove('shake');
+    void projectLockCard.offsetWidth;
+    projectLockCard.classList.add('shake');
+    projectLockInput.value = '';
+    projectLockInput.focus();
+  }
+});
+
 projectTabs.addEventListener('click', (e) => {
   const btn = e.target.closest('button');
   if(!btn) return;
   const project = btn.getAttribute('data-project');
-  projectTabs.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
 
   if(project === 'summary'){
+    projectTabs.querySelectorAll('button, .project-branch').forEach(b => b.classList.toggle('active', b === btn));
     document.getElementById('kassaSections').style.display = 'none';
     document.getElementById('summarySection').style.display = '';
+    revealAppFromLauncher();
     renderSummary();
     return;
   }
-  document.getElementById('summarySection').style.display = 'none';
-  document.getElementById('kassaSections').style.display = '';
-  document.getElementById('importPanel').style.display = (project === 'vkider') ? '' : 'none';
-  if(project === currentProject) return;
-  currentProject = project;
-  attachProjectListeners(project);
+
+  if(PROJECT_CODES[project] && !isProjectUnlocked(project)){
+    openProjectLock(project, btn);
+    return;
+  }
+  activateProjectTab(project, btn);
 });
 
 render();
 (async function initProject(){
   await migrateLegacyDataIfNeeded();
-  attachProjectListeners(currentProject);
+  updateBranchLockIcons();
 })();
 
 // ---------- access gate ----------
 const ACCESS_CODE = 'MM-ADMIN';
 const gateScreen = document.getElementById('gateScreen');
+const launcherScreen = document.getElementById('launcherScreen');
 const mainApp = document.getElementById('mainApp');
 const gateForm = document.getElementById('gateForm');
 const gateCodeInput = document.getElementById('gateCode');
@@ -1835,14 +2107,26 @@ const gateCard = document.querySelector('.gate-card');
 
 function unlockApp(animate){
   if(animate){
-    mainApp.style.display = '';
-    mainApp.classList.add('app-enter');
+    launcherScreen.style.display = 'flex';
     gateScreen.classList.add('gate-exit');
     setTimeout(() => { gateScreen.style.display = 'none'; }, 550);
   } else {
     gateScreen.style.display = 'none';
-    mainApp.style.display = '';
+    launcherScreen.style.display = 'flex';
   }
+}
+
+function revealAppFromLauncher(){
+  if(launcherScreen.style.display === 'none') return;
+  mainApp.style.display = '';
+  mainApp.classList.remove('app-enter');
+  void mainApp.offsetWidth;
+  mainApp.classList.add('app-enter');
+  launcherScreen.classList.add('gate-exit');
+  setTimeout(() => {
+    launcherScreen.style.display = 'none';
+    launcherScreen.classList.remove('gate-exit');
+  }, 550);
 }
 
 if(localStorage.getItem('kassa_authed') === '1'){
@@ -1863,6 +2147,23 @@ gateForm.addEventListener('submit', (e) => {
     gateCodeInput.value = '';
     gateCodeInput.focus();
   }
+});
+
+const chooseProjectBtn = document.getElementById('chooseProjectBtn');
+const launcherProjects = document.getElementById('projectTabs');
+chooseProjectBtn.addEventListener('click', () => {
+  chooseProjectBtn.classList.add('hidden-collapse');
+  launcherProjects.style.display = '';
+  requestAnimationFrame(() => launcherProjects.classList.add('revealed'));
+});
+
+document.getElementById('switchProjectBtn').addEventListener('click', () => {
+  mainApp.style.display = 'none';
+  launcherScreen.style.display = 'flex';
+  launcherScreen.classList.remove('gate-exit');
+  chooseProjectBtn.classList.add('hidden-collapse');
+  launcherProjects.style.display = '';
+  launcherProjects.classList.add('revealed');
 });
 </script>
 </body>
