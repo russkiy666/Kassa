@@ -142,7 +142,7 @@
   .project-lock-overlay{
     position:fixed;
     inset:0;
-    z-index:900;
+    z-index:1100;
     display:flex;
     align-items:center;
     justify-content:center;
@@ -1987,8 +1987,8 @@ async function renderSummary(){
   }).join('');
 }
 
-const PROJECT_CODES = { vkider: 'MM-KASSA', artur: 'WW-KASSA', ruslan: 'OO-KASSA' };
-const PROJECT_NAMES = { vkider: 'Рома', artur: 'Артур', ruslan: 'Руслан' };
+const PROJECT_CODES = { vkider: 'MM-KASSA', artur: 'WW-KASSA', ruslan: 'OO-KASSA', summary: '24-KASSA' };
+const PROJECT_NAMES = { vkider: 'Рома', artur: 'Артур', ruslan: 'Руслан', summary: 'Общая сводка' };
 
 function getUnlockedProjects(){
   try{ return JSON.parse(localStorage.getItem('kassa_unlocked_projects') || '[]'); }
@@ -2046,6 +2046,14 @@ function activateProjectTab(project, btn){
   attachProjectListeners(project);
 }
 
+function activateSummaryTab(btn){
+  projectTabs.querySelectorAll('button, .project-branch').forEach(b => b.classList.toggle('active', b === btn));
+  document.getElementById('kassaSections').style.display = 'none';
+  document.getElementById('summarySection').style.display = '';
+  revealAppFromLauncher();
+  renderSummary();
+}
+
 projectLockCancel.addEventListener('click', closeProjectLock);
 projectLockOverlay.addEventListener('click', (e) => { if(e.target === projectLockOverlay) closeProjectLock(); });
 
@@ -2057,7 +2065,11 @@ projectLockForm.addEventListener('submit', (e) => {
   if(val === PROJECT_CODES[project]){
     markProjectUnlocked(project);
     closeProjectLock();
-    activateProjectTab(project, btn);
+    if(project === 'summary'){
+      activateSummaryTab(btn);
+    } else {
+      activateProjectTab(project, btn);
+    }
   } else {
     projectLockError.classList.add('show');
     projectLockCard.classList.remove('shake');
@@ -2073,17 +2085,13 @@ projectTabs.addEventListener('click', (e) => {
   if(!btn) return;
   const project = btn.getAttribute('data-project');
 
-  if(project === 'summary'){
-    projectTabs.querySelectorAll('button, .project-branch').forEach(b => b.classList.toggle('active', b === btn));
-    document.getElementById('kassaSections').style.display = 'none';
-    document.getElementById('summarySection').style.display = '';
-    revealAppFromLauncher();
-    renderSummary();
+  if(PROJECT_CODES[project] && !isProjectUnlocked(project)){
+    openProjectLock(project, btn);
     return;
   }
 
-  if(PROJECT_CODES[project] && !isProjectUnlocked(project)){
-    openProjectLock(project, btn);
+  if(project === 'summary'){
+    activateSummaryTab(btn);
     return;
   }
   activateProjectTab(project, btn);
