@@ -165,6 +165,27 @@
   }
   .gate-cancel:hover{ color:var(--text); }
 
+  .biometric-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    width:100%;
+    margin-top:10px;
+    padding:11px;
+    background:transparent;
+    border:1px solid var(--line-strong);
+    border-radius:12px;
+    color:var(--text-soft);
+    font-family:'Inter',sans-serif;
+    font-size:13.5px;
+    font-weight:600;
+    cursor:pointer;
+    transition:border-color .15s ease, color .15s ease;
+  }
+  .biometric-btn:hover{ border-color:var(--gold); color:var(--gold); }
+  .biometric-btn svg{ flex-shrink:0; }
+
   /* ---------- launcher ---------- */
   .launcher-card{
     max-width:360px;
@@ -901,6 +922,10 @@
       <input id="gateCode" class="gate-input" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Код доступа">
       <button type="submit" class="primary gate-btn">Войти</button>
     </form>
+    <button type="button" class="biometric-btn" id="gateBiometricBtn" style="display:none;">
+      <svg viewBox="0 0 24 24" width="16" height="16"><path d="M8 4.5a7.5 7.5 0 0 1 11.9 6M4.1 10.5A7.5 7.5 0 0 1 8 4.5M4 14a8 8 0 0 0 4 6.9M20 13.5c0 3-1.5 5.5-3.5 7M8.5 20a10 10 0 0 0 8-9.5M12 8a4 4 0 0 1 4 4c0 2-.5 3.5-1.5 5M8 12a4 4 0 0 1 2-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      Войти по Face ID
+    </button>
     <p class="gate-error" id="gateError">Неверный код</p>
   </div>
 </div>
@@ -2326,12 +2351,16 @@ if(localStorage.getItem('kassa_authed') === '1'){
   unlockApp(false);
 }
 
+function onGateCodeCorrect(){
+  localStorage.setItem('kassa_authed', '1');
+  unlockApp(true);
+}
+
 gateForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const val = gateCodeInput.value.trim().toUpperCase();
   if(val === ACCESS_CODE){
-    localStorage.setItem('kassa_authed', '1');
-    unlockApp(true);
+    onGateCodeCorrect();
   } else {
     gateError.classList.add('show');
     gateCard.classList.remove('shake');
@@ -2339,6 +2368,46 @@ gateForm.addEventListener('submit', (e) => {
     gateCard.classList.add('shake');
     gateCodeInput.value = '';
     gateCodeInput.focus();
+  }
+});
+
+// ---------- Face ID / Touch ID via Telegram BiometricManager ----------
+// Works only when opened inside the actual Telegram app (Bot API 7.2+),
+// not in a plain browser tab. Telegram stores a single biometric token
+// per Mini App, so this is wired to the one master gate code.
+const gateBiometricBtn = document.getElementById('gateBiometricBtn');
+const tgApp = window.Telegram && window.Telegram.WebApp;
+const biometricManager = tgApp && tgApp.BiometricManager;
+
+if(biometricManager){
+  biometricManager.init(() => {
+    if(biometricManager.isBiometricAvailable){
+      gateBiometricBtn.style.display = '';
+    }
+  });
+}
+
+gateBiometricBtn.addEventListener('click', () => {
+  if(!biometricManager) return;
+  const runAuth = () => {
+    biometricManager.authenticate({ reason: 'Подтвердите вход в кассу' }, (success, token) => {
+      if(!success) return;
+      if(token){
+        if(token === ACCESS_CODE) onGateCodeCorrect();
+      } else {
+        // First successful biometric check with no token saved yet — store the code now.
+        biometricManager.updateBiometricToken(ACCESS_CODE, (saved) => {
+          if(saved) onGateCodeCorrect();
+        });
+      }
+    });
+  };
+  if(!biometricManager.isAccessGranted){
+    biometricManager.requestAccess({ reason: 'Для быстрого входа по Face ID' }, (granted) => {
+      if(granted) runAuth();
+    });
+  } else {
+    runAuth();
   }
 });
 
