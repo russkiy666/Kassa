@@ -2386,6 +2386,10 @@ const gateBiometricBtn = document.getElementById('gateBiometricBtn');
 const gateOrDivider = document.getElementById('gateOrDivider');
 const gateBiometricSettingsBtn = document.getElementById('gateBiometricSettingsBtn');
 const tgApp = window.Telegram && window.Telegram.WebApp;
+if(tgApp){
+  try{ tgApp.ready(); tgApp.expand(); }
+  catch(e){ console.error('Telegram WebApp ready/expand error', e); }
+}
 const biometricManager = tgApp && tgApp.BiometricManager;
 
 function runBiometricAuth(isAutoAttempt){
