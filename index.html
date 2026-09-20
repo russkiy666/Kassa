@@ -139,6 +139,13 @@
   }
   .gate-error.show{ opacity:1; }
 
+  .biometric-debug{
+    color:var(--text-soft);
+    font-size:11.5px;
+    line-height:1.5;
+    margin:12px 0 0;
+  }
+
   .project-lock-overlay{
     position:fixed;
     inset:0;
@@ -934,6 +941,7 @@
 
     <button type="button" class="gate-cancel" id="gateBiometricSettingsBtn" style="display:none;">Face ID не сработал? Настроить в Telegram</button>
     <p class="gate-error" id="gateError">Неверный код</p>
+    <p class="biometric-debug" id="biometricDebug" style="display:none;"></p>
   </div>
 </div>
 
@@ -2419,8 +2427,21 @@ if(biometricManager){
     if(biometricManager.isBiometricAvailable){
       gateBiometricBtn.style.display = '';
       gateOrDivider.style.display = '';
+    } else {
+      showBiometricDebug('Face ID/Touch ID не настроен на этом устройстве или недоступен в этой версии Telegram (biometricType: ' + (biometricManager.biometricType || 'нет') + ').');
     }
   });
+} else if(tgApp){
+  showBiometricDebug('Face ID недоступен: версия Telegram (Bot API ' + (tgApp.version || '?') + ') не поддерживает биометрию. Нужна версия 7.2+ — обнови приложение Telegram.');
+} else {
+  showBiometricDebug('Face ID доступен только при открытии кассы через кнопку меню бота в Telegram, а не по прямой ссылке.');
+}
+
+function showBiometricDebug(text){
+  const el = document.getElementById('biometricDebug');
+  if(!el) return;
+  el.textContent = text;
+  el.style.display = 'block';
 }
 
 gateBiometricBtn.addEventListener('click', () => {
