@@ -165,26 +165,28 @@
   }
   .gate-cancel:hover{ color:var(--text); }
 
-  .biometric-btn{
+  .biometric-primary-btn{
     display:flex;
     align-items:center;
     justify-content:center;
-    gap:8px;
-    width:100%;
-    margin-top:10px;
-    padding:11px;
-    background:transparent;
-    border:1px solid var(--line-strong);
-    border-radius:12px;
-    color:var(--text-soft);
-    font-family:'Inter',sans-serif;
-    font-size:13.5px;
-    font-weight:600;
-    cursor:pointer;
-    transition:border-color .15s ease, color .15s ease;
+    gap:9px;
+    margin-bottom:0;
   }
-  .biometric-btn:hover{ border-color:var(--gold); color:var(--gold); }
-  .biometric-btn svg{ flex-shrink:0; }
+  .biometric-primary-btn svg{ flex-shrink:0; }
+
+  .gate-or-divider{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    color:var(--text-soft);
+    font-size:12px;
+    margin:14px 0;
+  }
+  .gate-or-divider span{
+    flex:1;
+    height:1px;
+    background:var(--line-strong);
+  }
 
   /* ---------- launcher ---------- */
   .launcher-card{
@@ -917,15 +919,19 @@
       <line x1="13" y1="16.6" x2="13" y2="18.4" stroke="#4C8DFF" stroke-width="1.2"/>
     </svg>
     <h1 class="gate-title">YAKIMOVICH PROD</h1>
-    <p class="gate-sub">Введите код доступа</p>
-    <form id="gateForm">
-      <input id="gateCode" class="gate-input" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Код доступа">
-      <button type="submit" class="primary gate-btn">Войти</button>
-    </form>
-    <button type="button" class="biometric-btn" id="gateBiometricBtn" style="display:none;">
-      <svg viewBox="0 0 24 24" width="16" height="16"><path d="M8 4.5a7.5 7.5 0 0 1 11.9 6M4.1 10.5A7.5 7.5 0 0 1 8 4.5M4 14a8 8 0 0 0 4 6.9M20 13.5c0 3-1.5 5.5-3.5 7M8.5 20a10 10 0 0 0 8-9.5M12 8a4 4 0 0 1 4 4c0 2-.5 3.5-1.5 5M8 12a4 4 0 0 1 2-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    <p class="gate-sub">Войдите, чтобы открыть кассу</p>
+
+    <button type="button" class="primary gate-btn biometric-primary-btn" id="gateBiometricBtn" style="display:none;">
+      <svg viewBox="0 0 24 24" width="17" height="17"><path d="M8 4.5a7.5 7.5 0 0 1 11.9 6M4.1 10.5A7.5 7.5 0 0 1 8 4.5M4 14a8 8 0 0 0 4 6.9M20 13.5c0 3-1.5 5.5-3.5 7M8.5 20a10 10 0 0 0 8-9.5M12 8a4 4 0 0 1 4 4c0 2-.5 3.5-1.5 5M8 12a4 4 0 0 1 2-3.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
       Войти по Face ID
     </button>
+    <div class="gate-or-divider" id="gateOrDivider" style="display:none;"><span></span>или<span></span></div>
+
+    <form id="gateForm">
+      <input id="gateCode" class="gate-input" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Код доступа">
+      <button type="submit" class="primary gate-btn">Войти по коду</button>
+    </form>
+    <button type="button" class="gate-cancel" id="gateBiometricSettingsBtn" style="display:none;">Face ID не сработал? Настроить в Telegram</button>
     <p class="gate-error" id="gateError">Неверный код</p>
   </div>
 </div>
@@ -2376,39 +2382,61 @@ gateForm.addEventListener('submit', (e) => {
 // not in a plain browser tab. Telegram stores a single biometric token
 // per Mini App, so this is wired to the one master gate code.
 const gateBiometricBtn = document.getElementById('gateBiometricBtn');
+const gateOrDivider = document.getElementById('gateOrDivider');
+const gateBiometricSettingsBtn = document.getElementById('gateBiometricSettingsBtn');
 const tgApp = window.Telegram && window.Telegram.WebApp;
 const biometricManager = tgApp && tgApp.BiometricManager;
+
+function runBiometricAuth(isAutoAttempt){
+  if(!biometricManager) return;
+  biometricManager.authenticate({ reason: 'Подтвердите вход в кассу' }, (success, token) => {
+    if(!success){
+      // Declined or failed — quietly fall back to the code form.
+      // If access was granted before but this attempt failed, offer a way to fix it in Telegram settings.
+      if(!isAutoAttempt && biometricManager.isAccessGranted){
+        gateBiometricSettingsBtn.style.display = '';
+      }
+      return;
+    }
+    if(token){
+      if(token === ACCESS_CODE) onGateCodeCorrect();
+    } else {
+      // First successful biometric check with no token saved yet — store the code now.
+      biometricManager.updateBiometricToken(ACCESS_CODE, (saved) => {
+        if(saved) onGateCodeCorrect();
+      });
+    }
+  });
+}
 
 if(biometricManager){
   biometricManager.init(() => {
     if(biometricManager.isBiometricAvailable){
       gateBiometricBtn.style.display = '';
+      gateOrDivider.style.display = '';
+      // Stage 1: if the person already set this up before, try Face ID immediately —
+      // no tap needed, it's the very first thing that happens on this screen.
+      if(biometricManager.isAccessGranted && biometricManager.isBiometricTokenSaved){
+        runBiometricAuth(true);
+      }
     }
   });
 }
 
 gateBiometricBtn.addEventListener('click', () => {
   if(!biometricManager) return;
-  const runAuth = () => {
-    biometricManager.authenticate({ reason: 'Подтвердите вход в кассу' }, (success, token) => {
-      if(!success) return;
-      if(token){
-        if(token === ACCESS_CODE) onGateCodeCorrect();
-      } else {
-        // First successful biometric check with no token saved yet — store the code now.
-        biometricManager.updateBiometricToken(ACCESS_CODE, (saved) => {
-          if(saved) onGateCodeCorrect();
-        });
-      }
-    });
-  };
+  gateBiometricSettingsBtn.style.display = 'none';
   if(!biometricManager.isAccessGranted){
     biometricManager.requestAccess({ reason: 'Для быстрого входа по Face ID' }, (granted) => {
-      if(granted) runAuth();
+      if(granted) runBiometricAuth(false);
     });
   } else {
-    runAuth();
+    runBiometricAuth(false);
   }
+});
+
+gateBiometricSettingsBtn.addEventListener('click', () => {
+  if(biometricManager) biometricManager.openSettings();
 });
 
 const chooseProjectBtn = document.getElementById('chooseProjectBtn');
