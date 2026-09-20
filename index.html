@@ -440,6 +440,13 @@
     white-space:nowrap;
   }
   .vault .spent span{color:var(--danger);}
+  .vault .extra-line{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--icon-green);
+    margin-top:4px;
+    white-space:nowrap;
+  }
   .vault .balance{
     font-family:'IBM Plex Mono',monospace;
     font-size:12px;
@@ -1013,6 +1020,7 @@
     <div class="form-tabs" id="formTabs">
       <button type="button" data-tab="deal" class="active">Новая сделка</button>
       <button type="button" data-tab="expense">Новый расход</button>
+      <button type="button" data-tab="extra">Прочее</button>
     </div>
 
     <form class="deal-form" id="dealForm">
@@ -1042,8 +1050,12 @@
         </div>
       </div>
       <div class="field">
-        <label for="fInstantPayout">Выдал МОПу сразу, ₽ (если было)</label>
-        <input id="fInstantPayout" type="number" min="0" step="1" placeholder="0">
+        <label>Выдал МОПу сразу?</label>
+        <div class="segmented" id="instantPayoutToggle">
+          <span class="pill"></span>
+          <button type="button" data-val="no" class="active">Нет</button>
+          <button type="button" data-val="yes">Да</button>
+        </div>
       </div>
       <div class="submit-row">
         <button type="submit" class="primary">Добавить сделку</button>
@@ -1070,6 +1082,29 @@
       </div>
       <div class="submit-row">
         <button type="submit" class="primary">Добавить расход</button>
+      </div>
+    </form>
+
+    <form class="deal-form" id="extraForm" style="display:none;">
+      <div class="field">
+        <label>Кому</label>
+        <div class="chip-toggle" id="extraWhoToggle">
+          <button type="button" data-val="МОП" class="active">МОП</button>
+          <button type="button" data-val="Илья">Илья</button>
+          <button type="button" data-val="Рома">Рома</button>
+          <button type="button" data-val="Макс">Макс</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="exTitle">За что</label>
+        <input id="exTitle" type="text" required placeholder="Кураторство">
+      </div>
+      <div class="field">
+        <label for="exAmount">Сумма, ₽</label>
+        <input id="exAmount" type="number" min="0" step="1" required placeholder="5000">
+      </div>
+      <div class="submit-row">
+        <button type="submit" class="primary">Добавить доход</button>
       </div>
     </form>
   </section>
@@ -1122,6 +1157,30 @@
         </table>
       </div>
       <p class="empty" id="expensesEmptyState">Пока нет расходов.</p>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="collapse-header" id="extrasHistoryToggle">
+      <h2 style="margin:0;">История доп. доходов <span class="foot-note" id="extrasCountBadge" style="margin:0;"></span></h2>
+      <span class="collapse-chevron" id="extrasChevron">Показать ▾</span>
+    </div>
+    <div id="extrasHistoryBody" style="display:none; margin-top:16px;">
+      <div class="table-wrap">
+        <table id="extrasTable">
+          <thead>
+            <tr>
+              <th>Дата</th>
+              <th>Кому</th>
+              <th>За что</th>
+              <th class="num">Сумма</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="extrasBody"></tbody>
+        </table>
+      </div>
+      <p class="empty" id="extrasEmptyState">Пока нет доп. доходов.</p>
     </div>
   </section>
 
@@ -1241,11 +1300,13 @@ const DEFAULT_SETTINGS = { managerPct: 3, mopPct: 12, splitPct: 50 };
 let deals = [];
 let expenses = [];
 let rkoLeads = [];
+let extras = [];
 let settings = { ...DEFAULT_SETTINGS };
 let mopWhoSelected = "МОП";
 let lastAddedId = null;
 let lastAddedExpenseId = null;
 let lastAddedRkoId = null;
+let lastAddedExtraId = null;
 
 function fmt(n){
   const r = Math.round(n);
@@ -1296,6 +1357,7 @@ let currentProject = 'vkider';
 let dealsRef = null;
 let expensesRef = null;
 let rkoRef = null;
+let extrasRef = null;
 
 async function migrateLegacyDataIfNeeded(){
   try{
@@ -1321,9 +1383,11 @@ function attachProjectListeners(project){
   if(dealsRef) dealsRef.off();
   if(expensesRef) expensesRef.off();
   if(rkoRef) rkoRef.off();
+  if(extrasRef) extrasRef.off();
   deals = [];
   expenses = [];
   rkoLeads = [];
+  extras = [];
   undoStack = [];
   redoStack = [];
   updateUndoRedoButtons();
@@ -1332,6 +1396,7 @@ function attachProjectListeners(project){
   dealsRef = db.ref(`projects/${project}/deals`);
   expensesRef = db.ref(`projects/${project}/expenses`);
   rkoRef = db.ref(`projects/${project}/rkoLeads`);
+  extrasRef = db.ref(`projects/${project}/extras`);
 
   dealsRef.on('value', snap => {
     deals = snap.val() || [];
@@ -1351,10 +1416,20 @@ function attachProjectListeners(project){
     dataReady.rko = true;
     render();
   }, err => console.error('Firebase rkoLeads error', err));
+
+  extrasRef.on('value', snap => {
+    extras = snap.val() || [];
+    render();
+  }, err => console.error('Firebase extras error', err));
 }
 
 async function saveRkoLeads(){
   try{ await db.ref(`projects/${currentProject}/rkoLeads`).set(rkoLeads); }
+  catch(e){ console.error('Firebase save error', e); }
+}
+
+async function saveExtras(){
+  try{ await db.ref(`projects/${currentProject}/extras`).set(extras); }
   catch(e){ console.error('Firebase save error', e); }
 }
 
@@ -1366,7 +1441,8 @@ function snapshotState(){
   return {
     deals: JSON.parse(JSON.stringify(deals)),
     expenses: JSON.parse(JSON.stringify(expenses)),
-    rkoLeads: JSON.parse(JSON.stringify(rkoLeads))
+    rkoLeads: JSON.parse(JSON.stringify(rkoLeads)),
+    extras: JSON.parse(JSON.stringify(extras))
   };
 }
 
@@ -1389,7 +1465,8 @@ async function applySnapshot(snap){
   deals = snap.deals;
   expenses = snap.expenses;
   rkoLeads = snap.rkoLeads;
-  await Promise.all([saveDeals(), saveExpenses(), saveRkoLeads()]);
+  extras = snap.extras || [];
+  await Promise.all([saveDeals(), saveExpenses(), saveRkoLeads(), saveExtras()]);
   render();
   updateUndoRedoButtons();
 }
@@ -1462,13 +1539,18 @@ function renderTotals(){
     const pb = e.paidBy || 'МОП';
     if(spent[pb] !== undefined) spent[pb] += e.amount;
   }
+  const extraSums = { 'Макс':0, 'МОП':0, 'Илья':0, 'Рома':0 };
+  for(const ex of extras){
+    const who = ex.person || 'МОП';
+    if(extraSums[who] !== undefined) extraSums[who] += ex.amount;
+  }
   const grid = document.getElementById('totalsGrid');
   if(!grid.dataset.built){
     grid.innerHTML = `
-      <div class="vault manager"><div class="who">Макс</div><div class="amt" id="totMgr">0 ₽</div><div class="received">Принято: <span id="recvMgr">0 ₽</span></div><div class="spent">Потратил: <span id="spentMgr">0 ₽</span></div><div class="balance" id="balMgr"></div></div>
-      <div class="vault mop"><div class="who">МОП</div><div class="amt" id="totMop">0 ₽</div><div class="received">Принято: <span id="recvMop">0 ₽</span></div><div class="spent">Потратил: <span id="spentMop">0 ₽</span></div><div class="balance" id="balMop"></div></div>
-      <div class="vault ya"><div class="who">Илья</div><div class="amt" id="totYa">0 ₽</div><div class="received">Принято: <span id="recvYa">0 ₽</span></div><div class="spent">Потратил: <span id="spentYa">0 ₽</span></div><div class="balance" id="balYa"></div></div>
-      <div class="vault roma"><div class="who">Рома</div><div class="amt" id="totRoma">0 ₽</div><div class="received">Принято: <span id="recvRoma">0 ₽</span></div><div class="spent">Потратил: <span id="spentRoma">0 ₽</span></div><div class="balance" id="balRoma"></div></div>
+      <div class="vault manager"><div class="who">Макс</div><div class="amt" id="totMgr">0 ₽</div><div class="received">Принято: <span id="recvMgr">0 ₽</span></div><div class="spent">Потратил: <span id="spentMgr">0 ₽</span></div><div class="extra-line" id="extraMgr"></div><div class="balance" id="balMgr"></div></div>
+      <div class="vault mop"><div class="who">МОП</div><div class="amt" id="totMop">0 ₽</div><div class="received">Принято: <span id="recvMop">0 ₽</span></div><div class="spent">Потратил: <span id="spentMop">0 ₽</span></div><div class="extra-line" id="extraMop"></div><div class="balance" id="balMop"></div></div>
+      <div class="vault ya"><div class="who">Илья</div><div class="amt" id="totYa">0 ₽</div><div class="received">Принято: <span id="recvYa">0 ₽</span></div><div class="spent">Потратил: <span id="spentYa">0 ₽</span></div><div class="extra-line" id="extraYa"></div><div class="balance" id="balYa"></div></div>
+      <div class="vault roma"><div class="who">Рома</div><div class="amt" id="totRoma">0 ₽</div><div class="received">Принято: <span id="recvRoma">0 ₽</span></div><div class="spent">Потратил: <span id="spentRoma">0 ₽</span></div><div class="extra-line" id="extraRoma"></div><div class="balance" id="balRoma"></div></div>
     `;
     grid.dataset.built = '1';
   }
@@ -1476,10 +1558,15 @@ function renderTotals(){
   animTarget('heroProfit', dist.netProfit);
   animTarget('heroExpense', dist.expenseTotal);
 
-  animTarget('totMgr', dist.managerTotal);
-  animTarget('totMop', dist.mopTotal);
-  animTarget('totYa', dist.yaTotal);
-  animTarget('totRoma', dist.romaTotal);
+  const totalMgr = dist.managerTotal + extraSums['Макс'];
+  const totalMop = dist.mopTotal + extraSums['МОП'];
+  const totalYa = dist.yaTotal + extraSums['Илья'];
+  const totalRoma = dist.romaTotal + extraSums['Рома'];
+
+  animTarget('totMgr', totalMgr);
+  animTarget('totMop', totalMop);
+  animTarget('totYa', totalYa);
+  animTarget('totRoma', totalRoma);
 
   document.getElementById('recvMgr').textContent = fmt(received['Макс']);
   document.getElementById('recvMop').textContent = fmt(received['МОП']);
@@ -1491,10 +1578,26 @@ function renderTotals(){
   document.getElementById('spentYa').textContent = fmt(spent['Илья']);
   document.getElementById('spentRoma').textContent = fmt(spent['Рома']);
 
-  setBalance('balMgr', dist.managerTotal, received['Макс'], spent['Макс']);
-  setBalance('balMop', dist.mopTotal, received['МОП'], spent['МОП']);
-  setBalance('balYa', dist.yaTotal, received['Илья'], spent['Илья']);
-  setBalance('balRoma', dist.romaTotal, received['Рома'], spent['Рома']);
+  setExtraLine('extraMgr', extraSums['Макс']);
+  setExtraLine('extraMop', extraSums['МОП']);
+  setExtraLine('extraYa', extraSums['Илья']);
+  setExtraLine('extraRoma', extraSums['Рома']);
+
+  setBalance('balMgr', totalMgr, received['Макс'], spent['Макс']);
+  setBalance('balMop', totalMop, received['МОП'], spent['МОП']);
+  setBalance('balYa', totalYa, received['Илья'], spent['Илья']);
+  setBalance('balRoma', totalRoma, received['Рома'], spent['Рома']);
+}
+
+function setExtraLine(id, amount){
+  const el = document.getElementById(id);
+  if(amount > 0){
+    el.textContent = '+ доп. доход: ' + fmt(amount);
+    el.style.display = '';
+  } else {
+    el.textContent = '';
+    el.style.display = 'none';
+  }
 }
 
 function setBalance(id, fairShare, receivedAmt, spentAmt){
@@ -1705,8 +1808,45 @@ function render(){
   renderTotals();
   renderTable();
   renderExpensesTable();
+  renderExtrasTable();
   renderChart();
   renderRko();
+}
+
+function renderExtrasTable(){
+  document.getElementById('extrasCountBadge').textContent = extras.length ? `(${extras.length})` : '';
+  const body = document.getElementById('extrasBody');
+  const empty = document.getElementById('extrasEmptyState');
+  if(extras.length === 0){
+    body.innerHTML = '';
+    empty.style.display = 'block';
+  } else {
+    empty.style.display = 'none';
+    const rows = [...extras].reverse().map(ex => {
+      const who = ex.person || 'МОП';
+      const whoClass = receivedTagClass(who);
+      const dateStr = new Date(ex.date).toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit'});
+      const enterClass = (ex.id === lastAddedExtraId) ? ' enter' : '';
+      return `<tr class="${enterClass.trim()}">
+        <td>${dateStr}</td>
+        <td><span class="who-tag ${whoClass}">${who}</span></td>
+        <td class="name-cell">${escapeHtml(ex.title)}</td>
+        <td class="num">${fmt(ex.amount)}</td>
+        <td><button class="del-btn" data-id="${ex.id}">убрать</button></td>
+      </tr>`;
+    }).join('');
+    body.innerHTML = rows;
+    body.querySelectorAll('.del-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        pushUndo();
+        const id = btn.getAttribute('data-id');
+        extras = extras.filter(ex => String(ex.id) !== id);
+        await saveExtras();
+        render();
+      });
+    });
+  }
+  lastAddedExtraId = null;
 }
 
 function renderRko(){
@@ -1785,9 +1925,29 @@ paidByToggle.addEventListener('click', (e) => {
   paidByToggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
 });
 
+let extraWhoSelected = 'МОП';
+const extraWhoToggle = document.getElementById('extraWhoToggle');
+extraWhoToggle.addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  extraWhoSelected = btn.getAttribute('data-val');
+  extraWhoToggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+});
+
+let instantPayoutSelected = 'no';
+const instantPayoutToggle = document.getElementById('instantPayoutToggle');
+instantPayoutToggle.addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  instantPayoutSelected = btn.getAttribute('data-val');
+  instantPayoutToggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+  instantPayoutToggle.querySelector('.pill').style.transform = (instantPayoutSelected === 'yes') ? 'translateX(100%)' : 'translateX(0)';
+});
+
 const formTabs = document.getElementById('formTabs');
 const dealFormEl = document.getElementById('dealForm');
 const expenseFormEl = document.getElementById('expenseForm');
+const extraFormEl = document.getElementById('extraForm');
 formTabs.addEventListener('click', (e) => {
   const btn = e.target.closest('button');
   if(!btn) return;
@@ -1795,6 +1955,28 @@ formTabs.addEventListener('click', (e) => {
   formTabs.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
   dealFormEl.style.display = (tab === 'deal') ? '' : 'none';
   expenseFormEl.style.display = (tab === 'expense') ? '' : 'none';
+  extraFormEl.style.display = (tab === 'extra') ? '' : 'none';
+});
+
+document.getElementById('extraForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const title = document.getElementById('exTitle').value.trim();
+  const amount = parseFloat(document.getElementById('exAmount').value);
+  if(!title || isNaN(amount)) return;
+  pushUndo();
+  const id = Date.now();
+  extras.push({
+    id,
+    date: new Date().toISOString(),
+    person: extraWhoSelected,
+    title, amount
+  });
+  lastAddedExtraId = id;
+  await saveExtras();
+  e.target.reset();
+  extraWhoSelected = 'МОП';
+  extraWhoToggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.getAttribute('data-val') === 'МОП'));
+  render();
 });
 
 document.getElementById('dealForm').addEventListener('submit', async (e) => {
@@ -1802,8 +1984,7 @@ document.getElementById('dealForm').addEventListener('submit', async (e) => {
   const client = document.getElementById('fClient').value.trim();
   const payment = parseFloat(document.getElementById('fPayment').value);
   if(!client || isNaN(payment)) return;
-  const instantPayoutRaw = parseFloat(document.getElementById('fInstantPayout').value);
-  const instantMopPayout = isNaN(instantPayoutRaw) ? 0 : instantPayoutRaw;
+  const instantMopPayout = (instantPayoutSelected === 'yes') ? payment * settings.mopPct / 100 : 0;
   pushUndo();
   const id = Date.now();
   deals.push({
@@ -1822,6 +2003,9 @@ document.getElementById('dealForm').addEventListener('submit', async (e) => {
   toggle.querySelector('.pill').style.transform = 'translateX(0)';
   receivedBySelected = 'МОП';
   receivedToggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.getAttribute('data-val') === 'МОП'));
+  instantPayoutSelected = 'no';
+  instantPayoutToggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.getAttribute('data-val') === 'no'));
+  instantPayoutToggle.querySelector('.pill').style.transform = 'translateX(0)';
   render();
 });
 
@@ -1913,6 +2097,7 @@ function makeCollapsible(toggleId, bodyId, chevronId){
 
 makeCollapsible('dealsHistoryToggle', 'dealsHistoryBody', 'dealsChevron');
 makeCollapsible('expensesHistoryToggle', 'expensesHistoryBody', 'expensesChevron');
+makeCollapsible('extrasHistoryToggle', 'extrasHistoryBody', 'extrasChevron');
 makeCollapsible('rkoHistoryToggle', 'rkoHistoryBody', 'rkoChevron');
 
 const IMPORT_DATA = [{"client": "@Kirill22815", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@zzfs9", "payment": 15000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@ussra_56", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@klimmm89", "payment": 20000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@narzo4eal", "payment": 9000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@prodbyfila", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@Qracae", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@Legetl", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@op_dare", "payment": 20000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@e1r5d9", "payment": 4000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@ValeraprodZ", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@simpatichnyi", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@bellingham2O", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@kazantiip2007", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@leynnics", "payment": 2000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@onedyng", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@zxc_grib", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Макс", "date": "2026-09-12"}, {"client": "@seltyy7", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@L1wez", "payment": 7000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@exdiglq4", "payment": 20000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@ANONYMOU3LYFESTYLE", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@wilsbx", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@mota333u", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@bogdanmanagement", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@alipiin0", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@matyrr1", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@Lak3raz", "payment": 3000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@ce4440", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@goodbyelames", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@rvezee", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@ow912", "payment": 29500.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@dusiggme", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@vl_it01", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@Vezunch1k1", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@a013ye77", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@glerag1", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@semaabetter", "payment": 7500.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@richesnew", "payment": 9000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@sanek7797", "payment": 20000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@aabramo_v", "payment": 20000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@ultra_bogat111", "payment": 7500.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@usecryptoflow", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@left1k_prime", "payment": 8000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@Gnomultra", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@raydi7ess", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@innb0", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "ХАТА", "payment": 8000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@hero_username", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@playa1312", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@suskss", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@Paveldurowiw", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@Orsportstngame", "payment": 8000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@mefedik", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@biznesultra87", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@kolyyy12", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@uslyshall", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@skolenx", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@rchxx77", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@forwasl", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@nominal05", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@allyximmo", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@KPACOTKACOCET", "payment": 4000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@djneisywj", "payment": 30000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "8 сен без юза", "payment": 10000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@blademail1", "payment": 25000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@whyteezee", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Макс", "date": "2026-09-12"}, {"client": "@egorjii", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Илья", "date": "2026-09-12"}, {"client": "@youngcdf", "payment": 12500.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}, {"client": "@egdaal1", "payment": 5000.0, "expense": 0, "mopWho": "Илья", "receivedBy": "Рома", "date": "2026-09-12"}];
