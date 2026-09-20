@@ -921,16 +921,17 @@
     <h1 class="gate-title">YAKIMOVICH PROD</h1>
     <p class="gate-sub">Войдите, чтобы открыть кассу</p>
 
+    <form id="gateForm">
+      <input id="gateCode" class="gate-input" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Код доступа">
+      <button type="submit" class="primary gate-btn">Войти</button>
+    </form>
+
+    <div class="gate-or-divider" id="gateOrDivider" style="display:none;"><span></span>или<span></span></div>
     <button type="button" class="primary gate-btn biometric-primary-btn" id="gateBiometricBtn" style="display:none;">
       <svg viewBox="0 0 24 24" width="17" height="17"><path d="M8 4.5a7.5 7.5 0 0 1 11.9 6M4.1 10.5A7.5 7.5 0 0 1 8 4.5M4 14a8 8 0 0 0 4 6.9M20 13.5c0 3-1.5 5.5-3.5 7M8.5 20a10 10 0 0 0 8-9.5M12 8a4 4 0 0 1 4 4c0 2-.5 3.5-1.5 5M8 12a4 4 0 0 1 2-3.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
       Войти по Face ID
     </button>
-    <div class="gate-or-divider" id="gateOrDivider" style="display:none;"><span></span>или<span></span></div>
 
-    <form id="gateForm">
-      <input id="gateCode" class="gate-input" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Код доступа">
-      <button type="submit" class="primary gate-btn">Войти по коду</button>
-    </form>
     <button type="button" class="gate-cancel" id="gateBiometricSettingsBtn" style="display:none;">Face ID не сработал? Настроить в Telegram</button>
     <p class="gate-error" id="gateError">Неверный код</p>
   </div>
@@ -2414,11 +2415,6 @@ if(biometricManager){
     if(biometricManager.isBiometricAvailable){
       gateBiometricBtn.style.display = '';
       gateOrDivider.style.display = '';
-      // Stage 1: if the person already set this up before, try Face ID immediately —
-      // no tap needed, it's the very first thing that happens on this screen.
-      if(biometricManager.isAccessGranted && biometricManager.isBiometricTokenSaved){
-        runBiometricAuth(true);
-      }
     }
   });
 }
