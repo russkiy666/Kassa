@@ -345,6 +345,142 @@
   }
 
   /* ---------- hero ---------- */
+  /* ---------- weekly goal ---------- */
+  .goal-panel{
+    background:linear-gradient(160deg, rgba(76,141,255,0.07), var(--panel) 55%);
+  }
+  .goal-header{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:6px;
+  }
+  .goal-header h2{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:17px;
+    font-weight:700;
+    color:var(--text);
+  }
+  .goal-week-range{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--text-soft);
+    margin-top:3px;
+  }
+  .goal-edit-btn{
+    flex-shrink:0;
+    background:none;
+    border:1px solid var(--line-strong);
+    color:var(--text-soft);
+    font-family:'Inter',sans-serif;
+    font-size:12px;
+    font-weight:600;
+    padding:7px 12px;
+    border-radius:20px;
+    cursor:pointer;
+    transition:border-color .15s ease, color .15s ease;
+  }
+  .goal-edit-btn:hover{ border-color:var(--gold); color:var(--gold); }
+
+  .goal-empty{ margin-top:16px; }
+  .goal-empty p{
+    color:var(--text-soft);
+    font-size:13.5px;
+    margin:0 0 14px;
+  }
+  .goal-set-form{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .goal-set-form input{
+    flex:1;
+    min-width:160px;
+    border:none;
+    border-bottom:1px solid var(--line-strong);
+    background:transparent;
+    padding:10px 2px;
+    font-size:16px;
+    font-family:'IBM Plex Mono',monospace;
+    color:var(--text);
+  }
+  .goal-set-form input:focus{ outline:none; border-bottom-color:var(--gold); }
+  .goal-set-form button{ flex-shrink:0; }
+
+  .goal-tracker{
+    display:flex;
+    align-items:center;
+    gap:28px;
+    margin-top:18px;
+    flex-wrap:wrap;
+  }
+  .goal-ring-wrap{
+    position:relative;
+    width:120px;
+    height:120px;
+    flex-shrink:0;
+  }
+  .goal-ring{
+    width:120px;
+    height:120px;
+    transform:rotate(-90deg);
+  }
+  .goal-ring-bg{
+    fill:none;
+    stroke:var(--line-strong);
+    stroke-width:9;
+  }
+  .goal-ring-fill{
+    fill:none;
+    stroke:var(--gold);
+    stroke-width:9;
+    stroke-linecap:round;
+    transition:stroke-dashoffset .8s cubic-bezier(.19,1,.22,1), stroke .3s ease;
+  }
+  .goal-ring-label{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .goal-percent{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:24px;
+    color:var(--text);
+  }
+  .goal-stats{
+    flex:1;
+    min-width:200px;
+  }
+  .goal-stat-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    padding:6px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .goal-stat-row:last-of-type{ border-bottom:none; }
+  .goal-stat-row .k{
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+    color:var(--text-soft);
+  }
+  .goal-stat-row .v{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:15px;
+    color:var(--text);
+  }
+  .goal-pace{
+    margin-top:10px;
+    font-size:12.5px;
+    line-height:1.5;
+    color:var(--text-soft);
+  }
+
   .hero-grid{
     display:flex;
     flex-wrap:wrap;
@@ -1022,6 +1158,51 @@
 
   <div id="kassaSections">
 
+  <section class="panel goal-panel">
+    <div class="goal-header">
+      <div>
+        <h2 style="margin:0;">Цель на неделю</h2>
+        <div class="goal-week-range" id="goalWeekRange">—</div>
+      </div>
+      <button type="button" class="goal-edit-btn" id="goalEditBtn" style="display:none;">Изменить</button>
+    </div>
+
+    <div class="goal-empty" id="goalEmptyState">
+      <p>Цель на эту неделю ещё не поставлена</p>
+      <div class="goal-set-form">
+        <input id="goalInput" type="number" min="0" step="1" placeholder="Например, 500000">
+        <button type="button" class="primary" id="goalSetBtn">Поставить цель</button>
+      </div>
+    </div>
+
+    <div class="goal-tracker" id="goalTracker" style="display:none;">
+      <div class="goal-ring-wrap">
+        <svg class="goal-ring" viewBox="0 0 120 120">
+          <circle class="goal-ring-bg" cx="60" cy="60" r="52"/>
+          <circle class="goal-ring-fill" id="goalRingFill" cx="60" cy="60" r="52"/>
+        </svg>
+        <div class="goal-ring-label">
+          <div class="goal-percent" id="goalPercent">0%</div>
+        </div>
+      </div>
+      <div class="goal-stats">
+        <div class="goal-stat-row">
+          <span class="k">Факт</span>
+          <span class="v" id="goalFact">0 ₽</span>
+        </div>
+        <div class="goal-stat-row">
+          <span class="k">План</span>
+          <span class="v" id="goalPlan">0 ₽</span>
+        </div>
+        <div class="goal-stat-row">
+          <span class="k">Осталось дней</span>
+          <span class="v" id="goalDaysLeft">0</span>
+        </div>
+        <div class="goal-pace" id="goalPace"></div>
+      </div>
+    </div>
+  </section>
+
   <div class="gold-rule"></div>
 
   <div class="hero-grid">
@@ -1353,6 +1534,92 @@ function fmt(n){
   return r.toLocaleString('ru-RU') + ' ₽';
 }
 
+function getWeekBounds(d){
+  d = d || new Date();
+  const dayIdx = (d.getDay() + 6) % 7; // 0 = Monday ... 6 = Sunday
+  const start = new Date(d.getFullYear(), d.getMonth(), d.getDate() - dayIdx, 0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 7);
+  return { start, end, dayIdx };
+}
+
+function weekKey(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function formatWeekRange(start, end){
+  const lastDay = new Date(end);
+  lastDay.setDate(end.getDate() - 1);
+  const startStr = start.toLocaleDateString('ru-RU', { day: 'numeric' });
+  const endStr = lastDay.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+  if(start.getMonth() === lastDay.getMonth()){
+    return `${startStr}–${endStr}`;
+  }
+  const startFull = start.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+  return `${startFull} – ${endStr}`;
+}
+
+function renderGoalPanel(){
+  const { start, end, dayIdx } = getWeekBounds();
+  document.getElementById('goalWeekRange').textContent = formatWeekRange(start, end);
+
+  const fact = deals
+    .filter(d => {
+      const t = new Date(d.date).getTime();
+      return t >= start.getTime() && t < end.getTime();
+    })
+    .reduce((s, d) => s + d.payment, 0);
+
+  const emptyEl = document.getElementById('goalEmptyState');
+  const trackerEl = document.getElementById('goalTracker');
+  const editBtn = document.getElementById('goalEditBtn');
+
+  if(currentGoalAmount === null || currentGoalAmount === undefined){
+    emptyEl.style.display = '';
+    trackerEl.style.display = 'none';
+    editBtn.style.display = 'none';
+    return;
+  }
+
+  emptyEl.style.display = 'none';
+  trackerEl.style.display = 'flex';
+  editBtn.style.display = '';
+
+  const percent = currentGoalAmount > 0 ? Math.round((fact / currentGoalAmount) * 100) : 0;
+  document.getElementById('goalFact').textContent = fmt(fact);
+  document.getElementById('goalPlan').textContent = fmt(currentGoalAmount);
+  document.getElementById('goalPercent').textContent = percent + '%';
+
+  const daysLeft = 6 - dayIdx;
+  document.getElementById('goalDaysLeft').textContent = daysLeft;
+
+  const daysElapsed = dayIdx + 1;
+  const projected = (fact / daysElapsed) * 7;
+  const paceEl = document.getElementById('goalPace');
+  if(currentGoalAmount > 0){
+    if(fact >= currentGoalAmount){
+      paceEl.textContent = 'Цель уже выполнена 🎉';
+      paceEl.style.color = 'var(--icon-green)';
+    } else if(projected >= currentGoalAmount){
+      paceEl.textContent = 'На текущем темпе цель будет выполнена';
+      paceEl.style.color = 'var(--icon-green)';
+    } else {
+      paceEl.textContent = `На текущем темпе к концу недели будет ~${fmt(projected)}`;
+      paceEl.style.color = 'var(--text-soft)';
+    }
+  }
+
+  const ring = document.getElementById('goalRingFill');
+  const circumference = 2 * Math.PI * 52;
+  const clamped = Math.max(0, Math.min(100, percent));
+  ring.style.strokeDasharray = String(circumference);
+  ring.style.strokeDashoffset = String(circumference * (1 - clamped / 100));
+  ring.style.stroke = percent >= 100 ? 'var(--icon-green)' : 'var(--gold)';
+}
+
 function computeDistribution(){
   const revenue = deals.reduce((s,d) => s + d.payment, 0);
   const expenseTotal = expenses.reduce((s,e) => s + e.amount, 0);
@@ -1398,6 +1665,8 @@ let dealsRef = null;
 let expensesRef = null;
 let rkoRef = null;
 let extrasRef = null;
+let goalRef = null;
+let currentGoalAmount = null;
 
 async function migrateLegacyDataIfNeeded(){
   try{
@@ -1424,10 +1693,12 @@ function attachProjectListeners(project){
   if(expensesRef) expensesRef.off();
   if(rkoRef) rkoRef.off();
   if(extrasRef) extrasRef.off();
+  if(goalRef) goalRef.off();
   deals = [];
   expenses = [];
   rkoLeads = [];
   extras = [];
+  currentGoalAmount = null;
   undoStack = [];
   redoStack = [];
   updateUndoRedoButtons();
@@ -1437,6 +1708,7 @@ function attachProjectListeners(project){
   expensesRef = db.ref(`projects/${project}/expenses`);
   rkoRef = db.ref(`projects/${project}/rkoLeads`);
   extrasRef = db.ref(`projects/${project}/extras`);
+  goalRef = db.ref(`projects/${project}/weeklyGoals/${weekKey(getWeekBounds().start)}`);
 
   dealsRef.on('value', snap => {
     deals = snap.val() || [];
@@ -1461,6 +1733,11 @@ function attachProjectListeners(project){
     extras = snap.val() || [];
     render();
   }, err => console.error('Firebase extras error', err));
+
+  goalRef.on('value', snap => {
+    currentGoalAmount = snap.val();
+    renderGoalPanel();
+  }, err => console.error('Firebase goal error', err));
 }
 
 async function saveRkoLeads(){
@@ -1851,6 +2128,7 @@ function render(){
   renderExtrasTable();
   renderChart();
   renderRko();
+  renderGoalPanel();
 }
 
 function renderExtrasTable(){
@@ -2236,6 +2514,22 @@ function updateBranchLockIcons(){
     b.classList.toggle('unlocked', unlocked.includes(b.getAttribute('data-project')));
   });
 }
+
+document.getElementById('goalSetBtn').addEventListener('click', async () => {
+  const input = document.getElementById('goalInput');
+  const val = parseFloat(input.value);
+  if(isNaN(val) || val <= 0) return;
+  currentGoalAmount = val;
+  if(goalRef){ try{ await goalRef.set(val); }catch(e){ console.error('Firebase goal save error', e); } }
+  input.value = '';
+  renderGoalPanel();
+});
+
+document.getElementById('goalEditBtn').addEventListener('click', () => {
+  document.getElementById('goalInput').value = currentGoalAmount || '';
+  document.getElementById('goalEmptyState').style.display = '';
+  document.getElementById('goalTracker').style.display = 'none';
+});
 
 const projectTabs = document.getElementById('projectTabs');
 const projectLockOverlay = document.getElementById('projectLockOverlay');
