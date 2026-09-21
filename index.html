@@ -129,6 +129,33 @@
   .gate-input::placeholder{ color:#4B5158; text-transform:none; letter-spacing:normal; }
   .gate-input:focus{ outline:none; border-bottom-color:var(--gold); }
   .gate-btn{ width:100%; }
+
+  .auth-input{
+    width:100%;
+    text-align:left;
+    border:none;
+    border-bottom:1px solid var(--line-strong);
+    background:transparent;
+    padding:11px 2px;
+    font-size:15px;
+    font-family:'Inter',sans-serif;
+    color:var(--text);
+    margin-bottom:14px;
+    transition:border-color .15s ease;
+  }
+  .auth-input::placeholder{ color:#4B5158; }
+  .auth-input:focus{ outline:none; border-bottom-color:var(--gold); }
+  .cabinet-remember-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:12.5px;
+    color:var(--text-soft);
+    margin:2px 0 16px;
+    cursor:pointer;
+    text-align:left;
+  }
+  .cabinet-remember-row input{ accent-color:var(--gold); width:15px; height:15px; flex-shrink:0; }
   .gate-error{
     color:var(--danger);
     font-size:12.5px;
@@ -1194,6 +1221,48 @@
     </form>
     <p class="gate-error" id="projectLockError">Неверный код</p>
     <button type="button" class="gate-cancel" id="projectLockCancel">Отмена</button>
+  </div>
+</div>
+
+<div id="cabinetAuthOverlay" class="project-lock-overlay" style="display:none;">
+  <div class="gate-card" id="cabinetAuthCard" style="max-width:340px;">
+    <h1 class="gate-title" style="font-size:20px;">Личный кабинет</h1>
+
+    <div id="cabinetPasswordView" style="display:none;">
+      <p class="gate-sub" id="cabinetWelcomeBack">Здравствуй!</p>
+      <form id="cabinetPasswordForm">
+        <input id="cabinetPasswordInput" class="auth-input" type="password" placeholder="Пароль" autocomplete="off">
+        <label class="cabinet-remember-row">
+          <input type="checkbox" id="cabinetRememberCheck">
+          Запомнить меня на этом устройстве
+        </label>
+        <button type="submit" class="primary gate-btn">Войти</button>
+      </form>
+      <button type="button" class="gate-cancel" id="cabinetSwitchAccountBtn">Это не я — сменить аккаунт</button>
+    </div>
+
+    <div id="cabinetAuthTabsView">
+      <div class="form-tabs" id="cabinetAuthTabs" style="margin-bottom:18px;">
+        <button type="button" data-tab="register" class="active">Регистрация</button>
+        <button type="button" data-tab="login">Уже есть аккаунт</button>
+      </div>
+
+      <form id="cabinetRegisterForm">
+        <input id="regUsername" class="auth-input" type="text" placeholder="Username" autocomplete="off">
+        <input id="regPhone" class="auth-input" type="tel" placeholder="Номер телефона" autocomplete="off">
+        <input id="regEmail" class="auth-input" type="email" placeholder="Почта" autocomplete="off">
+        <input id="regPassword" class="auth-input" type="password" placeholder="Пароль" autocomplete="off">
+        <button type="submit" class="primary gate-btn">Зарегистрироваться</button>
+      </form>
+
+      <form id="cabinetLoginForm" style="display:none;">
+        <input id="loginUsername" class="auth-input" type="text" placeholder="Username" autocomplete="off">
+        <input id="loginPassword" class="auth-input" type="password" placeholder="Пароль" autocomplete="off">
+        <button type="submit" class="primary gate-btn">Войти</button>
+      </form>
+    </div>
+
+    <p class="gate-error" id="cabinetAuthError">Ошибка</p>
   </div>
 </div>
 
@@ -2873,6 +2942,156 @@ function activateSummaryTab(btn){
   renderSummary();
 }
 
+function sanitizeUsername(u){
+  return u.trim().toLowerCase().replace(/[.#$\[\]\/\s]+/g, '_');
+}
+
+async function hashPassword(pw){
+  const enc = new TextEncoder().encode(pw);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+const cabinetAuthOverlay = document.getElementById('cabinetAuthOverlay');
+const cabinetAuthCard = document.getElementById('cabinetAuthCard');
+const cabinetPasswordView = document.getElementById('cabinetPasswordView');
+const cabinetAuthTabsView = document.getElementById('cabinetAuthTabsView');
+const cabinetAuthError = document.getElementById('cabinetAuthError');
+let pendingCabinetBtn = null;
+
+function showCabinetError(msg){
+  cabinetAuthError.textContent = msg;
+  cabinetAuthError.classList.add('show');
+  cabinetAuthCard.classList.remove('shake');
+  void cabinetAuthCard.offsetWidth;
+  cabinetAuthCard.classList.add('shake');
+}
+
+function openCabinetAuth(btn){
+  pendingCabinetBtn = btn;
+  cabinetAuthError.classList.remove('show');
+  const rememberedUser = localStorage.getItem('kassa_cabinet_user');
+  if(localStorage.getItem('kassa_cabinet_remember') === '1' && rememberedUser){
+    activatePersonalTab(btn);
+    return;
+  }
+  cabinetAuthOverlay.style.display = 'flex';
+  if(rememberedUser){
+    cabinetPasswordView.style.display = '';
+    cabinetAuthTabsView.style.display = 'none';
+    document.getElementById('cabinetWelcomeBack').textContent = `Здравствуй, ${rememberedUser}! Введи пароль.`;
+    document.getElementById('cabinetPasswordInput').value = '';
+    document.getElementById('cabinetRememberCheck').checked = false;
+  } else {
+    cabinetPasswordView.style.display = 'none';
+    cabinetAuthTabsView.style.display = '';
+  }
+}
+
+function closeCabinetAuth(){
+  cabinetAuthOverlay.style.display = 'none';
+}
+
+cabinetAuthOverlay.addEventListener('click', (e) => { if(e.target === cabinetAuthOverlay) closeCabinetAuth(); });
+
+document.getElementById('cabinetSwitchAccountBtn').addEventListener('click', () => {
+  localStorage.removeItem('kassa_cabinet_user');
+  localStorage.removeItem('kassa_cabinet_remember');
+  cabinetAuthError.classList.remove('show');
+  cabinetPasswordView.style.display = 'none';
+  cabinetAuthTabsView.style.display = '';
+});
+
+const cabinetAuthTabs = document.getElementById('cabinetAuthTabs');
+cabinetAuthTabs.addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  const tab = btn.getAttribute('data-tab');
+  cabinetAuthTabs.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+  document.getElementById('cabinetRegisterForm').style.display = (tab === 'register') ? '' : 'none';
+  document.getElementById('cabinetLoginForm').style.display = (tab === 'login') ? '' : 'none';
+});
+
+document.getElementById('cabinetRegisterForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const username = document.getElementById('regUsername').value.trim();
+  const phone = document.getElementById('regPhone').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const password = document.getElementById('regPassword').value;
+  if(!username || !phone || !email || !password){
+    showCabinetError('Заполни все поля');
+    return;
+  }
+  const key = sanitizeUsername(username);
+  try{
+    const existing = await db.ref(`cabinetUsers/${key}`).once('value');
+    if(existing.val()){
+      showCabinetError('Такой username уже занят');
+      return;
+    }
+    const passwordHash = await hashPassword(password);
+    await db.ref(`cabinetUsers/${key}`).set({ username, phone, email, passwordHash, createdAt: new Date().toISOString() });
+    localStorage.setItem('kassa_cabinet_user', username);
+    closeCabinetAuth();
+    activatePersonalTab(pendingCabinetBtn);
+  }catch(err){
+    console.error('cabinet register error', err);
+    showCabinetError('Ошибка сохранения, попробуй ещё раз');
+  }
+});
+
+document.getElementById('cabinetLoginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if(!username || !password){
+    showCabinetError('Заполни username и пароль');
+    return;
+  }
+  const key = sanitizeUsername(username);
+  try{
+    const snap = await db.ref(`cabinetUsers/${key}`).once('value');
+    const data = snap.val();
+    if(!data){ showCabinetError('Пользователь не найден'); return; }
+    const hash = await hashPassword(password);
+    if(hash !== data.passwordHash){ showCabinetError('Неверный пароль'); return; }
+    localStorage.setItem('kassa_cabinet_user', data.username);
+    closeCabinetAuth();
+    activatePersonalTab(pendingCabinetBtn);
+  }catch(err){
+    console.error('cabinet login error', err);
+    showCabinetError('Ошибка входа, попробуй ещё раз');
+  }
+});
+
+document.getElementById('cabinetPasswordForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const username = localStorage.getItem('kassa_cabinet_user');
+  const password = document.getElementById('cabinetPasswordInput').value;
+  const remember = document.getElementById('cabinetRememberCheck').checked;
+  if(!password){ showCabinetError('Введи пароль'); return; }
+  const key = sanitizeUsername(username);
+  try{
+    const snap = await db.ref(`cabinetUsers/${key}`).once('value');
+    const data = snap.val();
+    if(!data){
+      localStorage.removeItem('kassa_cabinet_user');
+      cabinetPasswordView.style.display = 'none';
+      cabinetAuthTabsView.style.display = '';
+      showCabinetError('Аккаунт не найден, зарегистрируйся заново');
+      return;
+    }
+    const hash = await hashPassword(password);
+    if(hash !== data.passwordHash){ showCabinetError('Неверный пароль'); return; }
+    if(remember) localStorage.setItem('kassa_cabinet_remember', '1');
+    closeCabinetAuth();
+    activatePersonalTab(pendingCabinetBtn);
+  }catch(err){
+    console.error('cabinet password check error', err);
+    showCabinetError('Ошибка входа, попробуй ещё раз');
+  }
+});
+
 function activatePersonalTab(btn){
   projectTabs.querySelectorAll('button, .project-branch').forEach(b => b.classList.toggle('active', b === btn));
   document.getElementById('kassaSections').style.display = 'none';
@@ -2954,7 +3173,7 @@ projectTabs.addEventListener('click', (e) => {
     return;
   }
   if(project === 'personal'){
-    activatePersonalTab(btn);
+    openCabinetAuth(btn);
     return;
   }
   activateProjectTab(project, btn);
