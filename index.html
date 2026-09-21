@@ -349,6 +349,45 @@
     color:var(--text);
   }
 
+  /* ---------- tasks ---------- */
+  .task-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:11px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .task-row:last-child{ border-bottom:none; }
+  .task-check{
+    flex-shrink:0;
+    width:22px;
+    height:22px;
+    border-radius:7px;
+    border:1px solid var(--line-strong);
+    background:transparent;
+    color:var(--icon-green);
+    font-size:13px;
+    font-weight:700;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+  }
+  .task-row.done .task-check{
+    background:var(--icon-green-soft);
+    border-color:var(--icon-green);
+  }
+  .task-title{
+    flex:1;
+    font-family:'Inter',sans-serif;
+    font-size:13.5px;
+    color:var(--text);
+  }
+  .task-row.done .task-title{
+    color:var(--text-soft);
+    text-decoration:line-through;
+  }
+
   /* ---------- header ---------- */
   header.top{
     display:flex;
@@ -1146,6 +1185,7 @@
 
     <div id="projectTabs" class="launcher-projects" style="display:none;">
       <button type="button" data-project="summary" class="form-tabs-wide">Общая сводка</button>
+      <button type="button" data-project="personal" class="form-tabs-wide">Личный кабинет</button>
       <div class="project-branches" id="projectBranches">
         <button type="button" class="project-branch" data-project="vkider">
           <span class="branch-name">Рома</span>
@@ -1540,6 +1580,51 @@
     <div id="summaryBody"></div>
   </div>
 
+  <div id="personalSection" style="display:none;">
+    <div class="gold-rule"></div>
+    <header class="top" style="margin-bottom:6px;">
+      <h1 style="font-size:24px;">Личный кабинет</h1>
+    </header>
+    <p class="tagline">Доход, проекты и задачи одного человека — по всем проектам сразу.</p>
+
+    <div class="chip-toggle" id="personalPersonToggle" style="margin:18px 0 22px;">
+      <button type="button" data-val="Илья" class="active">Илья</button>
+      <button type="button" data-val="Рома">Рома</button>
+      <button type="button" data-val="Макс">Макс</button>
+      <button type="button" data-val="МОП">МОП</button>
+    </div>
+
+    <div id="personalStatsBody"></div>
+
+    <section class="panel">
+      <h2>Задачи</h2>
+      <form class="deal-form" id="taskForm">
+        <div class="field" style="grid-column:1/-1;">
+          <label for="taskTitle">Новая задача</label>
+          <input id="taskTitle" type="text" required placeholder="Написать отчёт по неделе">
+        </div>
+        <div class="field" style="grid-column:1/-1;">
+          <label>Кому</label>
+          <div class="chip-toggle" id="taskWhoToggle">
+            <button type="button" data-val="Илья" class="active">Илья</button>
+            <button type="button" data-val="Рома">Рома</button>
+            <button type="button" data-val="Макс">Макс</button>
+            <button type="button" data-val="МОП">МОП</button>
+          </div>
+        </div>
+        <div class="submit-row">
+          <button type="submit" class="primary">Добавить задачу</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Задачи <span id="tasksPersonLabel" style="color:var(--text-soft); font-weight:400;"></span></h2>
+      <div id="tasksList"></div>
+      <p class="empty" id="tasksEmptyState">Пока нет задач.</p>
+    </section>
+  </div>
+
 </div>
 
 <script>
@@ -1567,6 +1652,7 @@ let deals = [];
 let expenses = [];
 let rkoLeads = [];
 let extras = [];
+let tasks = [];
 let settings = { ...DEFAULT_SETTINGS };
 let mopWhoSelected = "МОП";
 let lastAddedId = null;
@@ -1665,9 +1751,9 @@ function renderGoalPanel(){
   ring.style.stroke = percent >= 100 ? 'var(--icon-green)' : 'var(--gold)';
 }
 
-function computeDistribution(){
-  const revenue = deals.reduce((s,d) => s + d.payment, 0);
-  const expenseTotal = expenses.reduce((s,e) => s + e.amount, 0);
+function computeDistributionPure(dealsArr, expensesArr){
+  const revenue = dealsArr.reduce((s,d) => s + d.payment, 0);
+  const expenseTotal = expensesArr.reduce((s,e) => s + e.amount, 0);
   const netProfit = revenue - expenseTotal;
 
   // Выручка − расход = делим
@@ -1679,7 +1765,7 @@ function computeDistribution(){
 
   let mopTotal = 0, yaExtra = 0;
   if(revenue > 0){
-    for(const d of deals){
+    for(const d of dealsArr){
       const share = d.payment / revenue;
       const portion = mopPoolTotal * share;
       if(d.mopWho === 'Илья' || d.mopWho === 'Я') yaExtra += portion;
@@ -1689,6 +1775,10 @@ function computeDistribution(){
   const yaTotal = yaBase + yaExtra;
 
   return { revenue, expenseTotal, netProfit, managerTotal, mopTotal, yaTotal, romaTotal };
+}
+
+function computeDistribution(){
+  return computeDistributionPure(deals, expenses);
 }
 
 function computeDealSplit(d, revenue, expenseTotal){
@@ -1792,6 +1882,23 @@ async function saveRkoLeads(){
 
 async function saveExtras(){
   try{ await db.ref(`projects/${currentProject}/extras`).set(extras); }
+  catch(e){ console.error('Firebase save error', e); }
+}
+
+let tasksRef = null;
+function attachTasksListener(){
+  tasksRef = db.ref('tasks');
+  tasksRef.on('value', snap => {
+    tasks = snap.val() || [];
+    const personalSection = document.getElementById('personalSection');
+    if(personalSection && personalSection.style.display !== 'none'){
+      renderPersonalTasks();
+    }
+  }, err => console.error('Firebase tasks error', err));
+}
+
+async function saveTasks(){
+  try{ await db.ref('tasks').set(tasks); }
   catch(e){ console.error('Firebase save error', e); }
 }
 
@@ -2535,6 +2642,115 @@ async function renderSummary(){
   }).join('');
 }
 
+const PERSON_TOTAL_KEY = { 'Макс':'managerTotal', 'МОП':'mopTotal', 'Илья':'yaTotal', 'Рома':'romaTotal' };
+let currentPersonalPerson = 'Илья';
+
+async function loadPersonStats(person){
+  const keys = Object.keys(PROJECT_LABELS);
+  const results = await Promise.all(keys.map(async (project) => {
+    const [dealsSnap, expensesSnap, extrasSnap] = await Promise.all([
+      db.ref(`projects/${project}/deals`).once('value'),
+      db.ref(`projects/${project}/expenses`).once('value'),
+      db.ref(`projects/${project}/extras`).once('value')
+    ]);
+    const pDeals = dealsSnap.val() || [];
+    const pExpenses = expensesSnap.val() || [];
+    const pExtras = extrasSnap.val() || [];
+    const dist = computeDistributionPure(pDeals, pExpenses);
+    let earned = dist[PERSON_TOTAL_KEY[person]] || 0;
+    let extraSum = 0;
+    for(const ex of pExtras){
+      if((ex.person || 'МОП') === person) extraSum += ex.amount;
+    }
+    earned += extraSum;
+    const dealsCount = pDeals.filter(d => {
+      const receiver = d.receivedBy || 'МОП';
+      const mop = (d.mopWho === 'Я') ? 'Илья' : (d.mopWho || 'МОП');
+      return receiver === person || mop === person;
+    }).length;
+    return { project, earned, extraSum, dealsCount };
+  }));
+  return results;
+}
+
+async function renderPersonalStats(){
+  const body = document.getElementById('personalStatsBody');
+  body.innerHTML = '<p class="empty">Загрузка…</p>';
+  const results = await loadPersonStats(currentPersonalPerson);
+  const totalEarned = results.reduce((s,r) => s + r.earned, 0);
+  const totalDeals = results.reduce((s,r) => s + r.dealsCount, 0);
+  body.innerHTML = `
+    <div class="hero-grid" style="margin-bottom:20px;">
+      <div class="hero-item revenue">
+        <div class="hero-item-top">
+          <div class="label">ДОХОД ВСЕГО</div>
+          <div class="stat-icon icon-green"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h11l4 4v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="value">${fmt(totalEarned)}</div>
+      </div>
+      <div class="hero-item profit">
+        <div class="hero-item-top">
+          <div class="label">СДЕЛОК УЧАСТВОВАЛ</div>
+          <div class="stat-icon icon-purple"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="value">${totalDeals}</div>
+      </div>
+    </div>
+    <div class="summary-project">
+      <h3>По проектам</h3>
+      ${results.map(r => `
+        <div class="summary-dept">
+          <div class="summary-dept-title">${PROJECT_LABELS[r.project]}</div>
+          <div class="summary-row"><span class="k">Заработано</span><span class="v">${fmt(r.earned)}</span></div>
+          <div class="summary-row"><span class="k">Сделок</span><span class="v">${r.dealsCount}</span></div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderPersonal(){
+  document.getElementById('tasksPersonLabel').textContent = `(${currentPersonalPerson})`;
+  renderPersonalStats();
+  renderPersonalTasks();
+}
+
+function renderPersonalTasks(){
+  const list = document.getElementById('tasksList');
+  const empty = document.getElementById('tasksEmptyState');
+  const filtered = tasks.filter(t => t.person === currentPersonalPerson);
+  if(filtered.length === 0){
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  list.innerHTML = [...filtered].reverse().map(t => `
+    <div class="task-row ${t.done ? 'done' : ''}">
+      <button type="button" class="task-check" data-id="${t.id}">${t.done ? '✓' : ''}</button>
+      <span class="task-title">${escapeHtml(t.title)}</span>
+      <button type="button" class="del-btn" data-id="${t.id}">убрать</button>
+    </div>
+  `).join('');
+  list.querySelectorAll('.task-check').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-id');
+      const t = tasks.find(x => String(x.id) === id);
+      if(t) t.done = !t.done;
+      await saveTasks();
+      renderPersonalTasks();
+    });
+  });
+  list.querySelectorAll('.del-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-id');
+      tasks = tasks.filter(x => String(x.id) !== id);
+      await saveTasks();
+      renderPersonalTasks();
+    });
+  });
+}
+
 const PROJECT_CODES = { vkider: 'MM-KASSA', artur: 'WW-KASSA', ruslan: 'OO-KASSA', summary: '24-KASSA' };
 const PROJECT_NAMES = { vkider: 'Рома', artur: 'Артур', ruslan: 'Руслан', summary: 'Общая сводка' };
 
@@ -2602,6 +2818,7 @@ function closeProjectLock(){
 function activateProjectTab(project, btn){
   projectTabs.querySelectorAll('button, .project-branch').forEach(b => b.classList.toggle('active', b === btn));
   document.getElementById('summarySection').style.display = 'none';
+  document.getElementById('personalSection').style.display = 'none';
   document.getElementById('kassaSections').style.display = '';
   document.getElementById('importPanel').style.display = (project === 'vkider') ? '' : 'none';
   revealAppFromLauncher();
@@ -2613,10 +2830,51 @@ function activateProjectTab(project, btn){
 function activateSummaryTab(btn){
   projectTabs.querySelectorAll('button, .project-branch').forEach(b => b.classList.toggle('active', b === btn));
   document.getElementById('kassaSections').style.display = 'none';
+  document.getElementById('personalSection').style.display = 'none';
   document.getElementById('summarySection').style.display = '';
   revealAppFromLauncher();
   renderSummary();
 }
+
+function activatePersonalTab(btn){
+  projectTabs.querySelectorAll('button, .project-branch').forEach(b => b.classList.toggle('active', b === btn));
+  document.getElementById('kassaSections').style.display = 'none';
+  document.getElementById('summarySection').style.display = 'none';
+  document.getElementById('personalSection').style.display = '';
+  revealAppFromLauncher();
+  renderPersonal();
+}
+
+const personalPersonToggle = document.getElementById('personalPersonToggle');
+personalPersonToggle.addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  currentPersonalPerson = btn.getAttribute('data-val');
+  personalPersonToggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+  renderPersonal();
+});
+
+let taskWhoSelected = 'Илья';
+const taskWhoToggle = document.getElementById('taskWhoToggle');
+taskWhoToggle.addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  taskWhoSelected = btn.getAttribute('data-val');
+  taskWhoToggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+});
+
+document.getElementById('taskForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const title = document.getElementById('taskTitle').value.trim();
+  if(!title) return;
+  const id = Date.now();
+  tasks.push({ id, date: new Date().toISOString(), person: taskWhoSelected, title, done: false });
+  await saveTasks();
+  e.target.reset();
+  taskWhoSelected = 'Илья';
+  taskWhoToggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.getAttribute('data-val') === 'Илья'));
+  renderPersonalTasks();
+});
 
 projectLockCancel.addEventListener('click', closeProjectLock);
 projectLockOverlay.addEventListener('click', (e) => { if(e.target === projectLockOverlay) closeProjectLock(); });
@@ -2658,10 +2916,15 @@ projectTabs.addEventListener('click', (e) => {
     activateSummaryTab(btn);
     return;
   }
+  if(project === 'personal'){
+    activatePersonalTab(btn);
+    return;
+  }
   activateProjectTab(project, btn);
 });
 
 render();
+attachTasksListener();
 (async function initProject(){
   await migrateLegacyDataIfNeeded();
   updateBranchLockIcons();
