@@ -146,6 +146,42 @@
     margin:12px 0 0;
   }
 
+  .music-widget{
+    position:fixed;
+    right:16px;
+    bottom:calc(16px + env(safe-area-inset-bottom, 0px));
+    z-index:500;
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap:8px;
+  }
+  .music-toggle-btn{
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    background:var(--panel);
+    border:1px solid var(--line-strong);
+    color:var(--text-soft);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    box-shadow:0 1px 0 rgba(255,255,255,0.03) inset, 0 6px 20px rgba(0,0,0,0.35);
+    transition:border-color .15s ease, color .15s ease;
+  }
+  .music-toggle-btn:hover{ border-color:var(--gold); color:var(--gold); }
+  .music-toggle-btn svg{ width:19px; height:19px; fill:none; stroke:currentColor; }
+  .music-player-wrap{
+    width:260px;
+    max-width:calc(100vw - 32px);
+    border-radius:14px;
+    overflow:hidden;
+    background:var(--panel);
+    border:1px solid var(--line);
+    box-shadow:0 1px 0 rgba(255,255,255,0.03) inset, 0 10px 28px rgba(0,0,0,0.4);
+  }
+
   .project-lock-overlay{
     position:fixed;
     inset:0;
@@ -1135,6 +1171,15 @@
 </div>
 
 <div class="app" id="mainApp" style="display:none;">
+
+  <div class="music-widget" id="musicWidget">
+    <button type="button" id="musicToggleBtn" class="music-toggle-btn" title="Фоновая музыка">
+      <svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="3" stroke-width="1.7"/><circle cx="17" cy="16" r="3" stroke-width="1.7"/></svg>
+    </button>
+    <div class="music-player-wrap" id="musicPlayerWrap" style="display:none;">
+      <iframe id="musicIframe" frameborder="0" style="border:none;width:100%;height:100px;" width="100%" height="100" src="" allow="autoplay"></iframe>
+    </div>
+  </div>
 
   <header class="top">
     <svg class="mark" viewBox="0 0 26 26" fill="none">
@@ -2654,7 +2699,22 @@ function revealAppFromLauncher(){
     launcherScreen.style.display = 'none';
     launcherScreen.classList.remove('gate-exit');
   }, 550);
+  loadBackgroundMusic();
 }
+
+const YANDEX_TRACK_EMBED = 'https://music.yandex.ru/iframe/#track/147181884/40194109';
+let musicLoaded = false;
+function loadBackgroundMusic(){
+  if(musicLoaded) return;
+  musicLoaded = true;
+  document.getElementById('musicIframe').src = YANDEX_TRACK_EMBED;
+}
+
+document.getElementById('musicToggleBtn').addEventListener('click', () => {
+  loadBackgroundMusic();
+  const wrap = document.getElementById('musicPlayerWrap');
+  wrap.style.display = (wrap.style.display === 'none') ? 'block' : 'none';
+});
 
 if(localStorage.getItem('kassa_authed') === '1'){
   unlockApp(false);
