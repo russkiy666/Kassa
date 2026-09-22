@@ -443,6 +443,55 @@
     text-decoration:line-through;
   }
 
+  /* ---------- employees ---------- */
+  .employee-row{
+    padding:14px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .employee-row:last-child{ border-bottom:none; }
+  .employee-row-top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:6px;
+  }
+  .employee-row-name{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:15px;
+    color:var(--text);
+  }
+  .employee-row-meta{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--text-soft);
+  }
+  .employee-row-meta b{ color:var(--gold); font-weight:600; }
+  .employee-project-tag{
+    display:inline-block;
+    font-family:'Inter',sans-serif;
+    font-size:11px;
+    padding:2px 8px;
+    border-radius:9px;
+    background:rgba(76,141,255,0.14);
+    color:var(--gold);
+    margin-right:6px;
+  }
+  .project-chip-btn{
+    background:var(--panel-raise);
+    border:1px solid var(--line-strong);
+    color:var(--text);
+    font-family:'Space Grotesk',sans-serif;
+    font-size:14px;
+    font-weight:600;
+    padding:13px 20px;
+    border-radius:14px;
+    cursor:pointer;
+    transition:border-color .15s ease, color .15s ease;
+  }
+  .project-chip-btn:hover{ border-color:var(--gold); color:var(--gold); }
+
   /* ---------- header ---------- */
   header.top{
     display:flex;
@@ -1194,20 +1243,36 @@
     <h1 class="gate-title">YAKIMOVICH PROD</h1>
     <p class="gate-sub">Войдите, чтобы открыть кассу</p>
 
-    <form id="gateForm">
-      <input id="gateCode" class="gate-input" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Код доступа">
-      <button type="submit" class="primary gate-btn">Войти</button>
-    </form>
+    <div class="form-tabs" id="gateRoleTabs" style="margin-bottom:18px;">
+      <button type="button" data-role="admin" class="active">Админ</button>
+      <button type="button" data-role="employee">Сотрудник</button>
+    </div>
 
-    <div class="gate-or-divider" id="gateOrDivider" style="display:none;"><span></span>или<span></span></div>
-    <button type="button" class="primary gate-btn biometric-primary-btn" id="gateBiometricBtn" style="display:none;">
-      <svg viewBox="0 0 24 24" width="17" height="17"><path d="M8 4.5a7.5 7.5 0 0 1 11.9 6M4.1 10.5A7.5 7.5 0 0 1 8 4.5M4 14a8 8 0 0 0 4 6.9M20 13.5c0 3-1.5 5.5-3.5 7M8.5 20a10 10 0 0 0 8-9.5M12 8a4 4 0 0 1 4 4c0 2-.5 3.5-1.5 5M8 12a4 4 0 0 1 2-3.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-      Войти по Face ID
-    </button>
+    <div id="gateAdminView">
+      <form id="gateForm">
+        <input id="gateCode" class="gate-input" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Код доступа">
+        <button type="submit" class="primary gate-btn">Войти</button>
+      </form>
 
-    <button type="button" class="gate-cancel" id="gateBiometricSettingsBtn" style="display:none;">Face ID не сработал? Настроить в Telegram</button>
+      <div class="gate-or-divider" id="gateOrDivider" style="display:none;"><span></span>или<span></span></div>
+      <button type="button" class="primary gate-btn biometric-primary-btn" id="gateBiometricBtn" style="display:none;">
+        <svg viewBox="0 0 24 24" width="17" height="17"><path d="M8 4.5a7.5 7.5 0 0 1 11.9 6M4.1 10.5A7.5 7.5 0 0 1 8 4.5M4 14a8 8 0 0 0 4 6.9M20 13.5c0 3-1.5 5.5-3.5 7M8.5 20a10 10 0 0 0 8-9.5M12 8a4 4 0 0 1 4 4c0 2-.5 3.5-1.5 5M8 12a4 4 0 0 1 2-3.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        Войти по Face ID
+      </button>
+
+      <button type="button" class="gate-cancel" id="gateBiometricSettingsBtn" style="display:none;">Face ID не сработал? Настроить в Telegram</button>
+      <p class="biometric-debug" id="biometricDebug" style="display:none;"></p>
+    </div>
+
+    <div id="gateEmployeeView" style="display:none;">
+      <form id="employeeLoginForm">
+        <input id="employeeNameInput" class="auth-input" type="text" placeholder="Имя" autocomplete="off">
+        <input id="employeeCodeInput" class="auth-input" type="text" placeholder="Код" autocomplete="off">
+        <button type="submit" class="primary gate-btn">Войти в кабинет</button>
+      </form>
+    </div>
+
     <p class="gate-error" id="gateError">Неверный код</p>
-    <p class="biometric-debug" id="biometricDebug" style="display:none;"></p>
   </div>
 </div>
 
@@ -1224,47 +1289,7 @@
   </div>
 </div>
 
-<div id="cabinetAuthOverlay" class="project-lock-overlay" style="display:none;">
-  <div class="gate-card" id="cabinetAuthCard" style="max-width:340px;">
-    <h1 class="gate-title" style="font-size:20px;">Личный кабинет</h1>
 
-    <div id="cabinetPasswordView" style="display:none;">
-      <p class="gate-sub" id="cabinetWelcomeBack">Здравствуй!</p>
-      <form id="cabinetPasswordForm">
-        <input id="cabinetPasswordInput" class="auth-input" type="password" placeholder="Пароль" autocomplete="off">
-        <label class="cabinet-remember-row">
-          <input type="checkbox" id="cabinetRememberCheck">
-          Запомнить меня на этом устройстве
-        </label>
-        <button type="submit" class="primary gate-btn">Войти</button>
-      </form>
-      <button type="button" class="gate-cancel" id="cabinetSwitchAccountBtn">Это не я — сменить аккаунт</button>
-    </div>
-
-    <div id="cabinetAuthTabsView">
-      <div class="form-tabs" id="cabinetAuthTabs" style="margin-bottom:18px;">
-        <button type="button" data-tab="register" class="active">Регистрация</button>
-        <button type="button" data-tab="login">Уже есть аккаунт</button>
-      </div>
-
-      <form id="cabinetRegisterForm">
-        <input id="regUsername" class="auth-input" type="text" placeholder="Username" autocomplete="off">
-        <input id="regPhone" class="auth-input" type="tel" placeholder="Номер телефона" autocomplete="off">
-        <input id="regEmail" class="auth-input" type="email" placeholder="Почта" autocomplete="off">
-        <input id="regPassword" class="auth-input" type="password" placeholder="Пароль" autocomplete="off">
-        <button type="submit" class="primary gate-btn">Зарегистрироваться</button>
-      </form>
-
-      <form id="cabinetLoginForm" style="display:none;">
-        <input id="loginUsername" class="auth-input" type="text" placeholder="Username" autocomplete="off">
-        <input id="loginPassword" class="auth-input" type="password" placeholder="Пароль" autocomplete="off">
-        <button type="submit" class="primary gate-btn">Войти</button>
-      </form>
-    </div>
-
-    <p class="gate-error" id="cabinetAuthError">Ошибка</p>
-  </div>
-</div>
 
 <div id="launcherScreen" class="gate-screen" style="display:none;">
   <div class="gate-card launcher-card">
@@ -1283,6 +1308,7 @@
     <div id="projectTabs" class="launcher-projects" style="display:none;">
       <button type="button" data-project="summary" class="form-tabs-wide">Общая сводка</button>
       <button type="button" data-project="personal" class="form-tabs-wide">Личный кабинет</button>
+      <button type="button" data-project="employees" class="form-tabs-wide">Сотрудники</button>
       <div class="project-branches" id="projectBranches">
         <button type="button" class="project-branch" data-project="vkider">
           <span class="branch-name">Рома</span>
@@ -1731,6 +1757,77 @@
     </section>
   </div>
 
+  <div id="employeeHomeSection" style="display:none;">
+    <div class="gold-rule"></div>
+    <header class="top" style="margin-bottom:6px;">
+      <h1 style="font-size:24px;" id="employeeGreeting">Привет!</h1>
+    </header>
+    <p class="tagline">Твой личный кабинет — доход и проекты.</p>
+
+    <div class="segmented" id="employeePeriodToggle" style="max-width:260px; margin:18px 0 22px;">
+      <span class="pill"></span>
+      <button type="button" data-val="week" class="active">За неделю</button>
+      <button type="button" data-val="month">За месяц</button>
+    </div>
+
+    <div id="employeeStatsBody"></div>
+
+    <section class="panel">
+      <h2>Мои проекты</h2>
+      <div id="employeeProjectsBody" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
+    </section>
+
+    <button type="button" class="gate-cancel" id="employeeLogoutBtn" style="margin-top:4px;">Выйти из кабинета</button>
+  </div>
+
+  <div id="employeesSection" style="display:none;">
+    <div class="gold-rule"></div>
+    <header class="top" style="margin-bottom:6px;">
+      <h1 style="font-size:24px;">Сотрудники</h1>
+    </header>
+    <p class="tagline">Добавляй сотрудников, выдавай им код входа и назначай доступные проекты.</p>
+
+    <section class="panel">
+      <h2>Новый сотрудник</h2>
+      <form class="deal-form" id="employeeForm">
+        <div class="field">
+          <label for="empName">Имя</label>
+          <input id="empName" type="text" required placeholder="Дима">
+        </div>
+        <div class="field">
+          <label for="empCode">Код входа</label>
+          <input id="empCode" type="text" required placeholder="DIMA-777">
+        </div>
+        <div class="field" style="grid-column:1/-1;">
+          <label>Роль в расчётах (кассы)</label>
+          <div class="chip-toggle" id="empRoleToggle">
+            <button type="button" data-val="МОП" class="active">МОП</button>
+            <button type="button" data-val="Илья">Илья</button>
+            <button type="button" data-val="Рома">Рома</button>
+            <button type="button" data-val="Макс">Макс</button>
+          </div>
+        </div>
+        <div class="field" style="grid-column:1/-1;">
+          <label>Доступные проекты</label>
+          <div class="multi-chip" id="empProjectsToggle">
+            <button type="button" data-val="vkider">Рома</button>
+            <button type="button" data-val="artur">Артур</button>
+            <button type="button" data-val="ruslan">Руслан</button>
+          </div>
+        </div>
+        <div class="submit-row">
+          <button type="submit" class="primary">Добавить сотрудника</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Список сотрудников</h2>
+      <div id="employeesListBody"></div>
+      <p class="empty" id="employeesEmptyState">Пока нет сотрудников.</p>
+    </section>
+  </div>
+
 </div>
 
 <script>
@@ -1778,6 +1875,13 @@ function getWeekBounds(d){
   const end = new Date(start);
   end.setDate(start.getDate() + 7);
   return { start, end, dayIdx };
+}
+
+function getMonthBounds(d){
+  d = d || new Date();
+  const start = new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
+  const end = new Date(d.getFullYear(), d.getMonth() + 1, 1, 0, 0, 0, 0);
+  return { start, end };
 }
 
 function weekKey(d){
@@ -2857,6 +2961,199 @@ function renderPersonalTasks(){
   });
 }
 
+// ---------- employee home (individual cabinet) ----------
+let currentEmployee = null;
+let employeePeriod = 'week';
+
+function enterEmployeeMode(emp){
+  currentEmployee = emp;
+  gateScreen.style.display = 'none';
+  if(launcherScreen) launcherScreen.style.display = 'none';
+  mainApp.style.display = '';
+  mainApp.classList.remove('app-enter');
+  void mainApp.offsetWidth;
+  mainApp.classList.add('app-enter');
+  showEmployeeHome();
+  attachTasksListener();
+}
+
+function showEmployeeHome(){
+  document.getElementById('kassaSections').style.display = 'none';
+  document.getElementById('summarySection').style.display = 'none';
+  document.getElementById('personalSection').style.display = 'none';
+  document.getElementById('employeesSection').style.display = 'none';
+  document.getElementById('employeeHomeSection').style.display = '';
+  document.getElementById('employeeGreeting').textContent = `Привет, ${currentEmployee.name}!`;
+  renderEmployeeHome();
+}
+
+document.getElementById('employeeLogoutBtn').addEventListener('click', () => {
+  localStorage.removeItem('kassa_employee_id');
+  currentEmployee = null;
+  location.reload();
+});
+
+const employeePeriodToggle = document.getElementById('employeePeriodToggle');
+employeePeriodToggle.addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  employeePeriod = btn.getAttribute('data-val');
+  employeePeriodToggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+  employeePeriodToggle.querySelector('.pill').style.transform = (employeePeriod === 'month') ? 'translateX(100%)' : 'translateX(0)';
+  renderEmployeeHome();
+});
+
+async function renderEmployeeHome(){
+  if(!currentEmployee) return;
+  const body = document.getElementById('employeeStatsBody');
+  body.innerHTML = '<p class="empty">Загрузка…</p>';
+  const bounds = (employeePeriod === 'month') ? getMonthBounds() : getWeekBounds();
+  const assignedProjects = Object.keys(currentEmployee.projects || {}).filter(k => currentEmployee.projects[k]);
+
+  const results = await Promise.all(assignedProjects.map(async (project) => {
+    const [dealsSnap, expensesSnap, extrasSnap] = await Promise.all([
+      db.ref(`projects/${project}/deals`).once('value'),
+      db.ref(`projects/${project}/expenses`).once('value'),
+      db.ref(`projects/${project}/extras`).once('value')
+    ]);
+    const inPeriod = (dateStr) => {
+      const t = new Date(dateStr).getTime();
+      return t >= bounds.start.getTime() && t < bounds.end.getTime();
+    };
+    const pDeals = (dealsSnap.val() || []).filter(d => inPeriod(d.date));
+    const pExpenses = (expensesSnap.val() || []).filter(e => inPeriod(e.date));
+    const pExtras = (extrasSnap.val() || []).filter(ex => inPeriod(ex.date));
+    const dist = computeDistributionPure(pDeals, pExpenses);
+    let earned = dist[PERSON_TOTAL_KEY[currentEmployee.role]] || 0;
+    for(const ex of pExtras){
+      if((ex.person || 'МОП') === currentEmployee.role) earned += ex.amount;
+    }
+    return { project, earned, dealsCount: pDeals.length };
+  }));
+
+  const totalEarned = results.reduce((s,r) => s + r.earned, 0);
+  const totalDeals = results.reduce((s,r) => s + r.dealsCount, 0);
+  const periodLabel = employeePeriod === 'month' ? 'ДОХОД ЗА МЕСЯЦ' : 'ДОХОД ЗА НЕДЕЛЮ';
+
+  body.innerHTML = `
+    <div class="hero-grid" style="margin-bottom:20px;">
+      <div class="hero-item revenue">
+        <div class="hero-item-top">
+          <div class="label">${periodLabel}</div>
+          <div class="stat-icon icon-green"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h11l4 4v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="value">${fmt(totalEarned)}</div>
+      </div>
+      <div class="hero-item profit">
+        <div class="hero-item-top">
+          <div class="label">СДЕЛОК ЗА ПЕРИОД</div>
+          <div class="stat-icon icon-purple"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="value">${totalDeals}</div>
+      </div>
+    </div>
+    ${results.length ? `<div class="summary-project"><h3>По проектам</h3>${results.map(r => `
+      <div class="summary-row"><span class="k">${PROJECT_LABELS[r.project] || r.project}</span><span class="v">${fmt(r.earned)}</span></div>
+    `).join('')}</div>` : ''}
+  `;
+
+  const projBody = document.getElementById('employeeProjectsBody');
+  if(assignedProjects.length === 0){
+    projBody.innerHTML = '<p class="empty">Тебе пока не назначили ни одного проекта.</p>';
+  } else {
+    projBody.innerHTML = assignedProjects.map(p => `<button type="button" class="project-chip-btn" data-project="${p}">${PROJECT_LABELS[p] || p}</button>`).join('');
+    projBody.querySelectorAll('.project-chip-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const project = btn.getAttribute('data-project');
+        document.getElementById('employeeHomeSection').style.display = 'none';
+        currentProject = project;
+        attachProjectListeners(project);
+        document.getElementById('kassaSections').style.display = '';
+        document.getElementById('importPanel').style.display = 'none';
+      });
+    });
+  }
+}
+
+// ---------- admin: employee management ----------
+let empRoleSelected = 'МОП';
+const empRoleToggle = document.getElementById('empRoleToggle');
+empRoleToggle.addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  empRoleSelected = btn.getAttribute('data-val');
+  empRoleToggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+});
+
+let empProjectsSelected = new Set();
+const empProjectsToggle = document.getElementById('empProjectsToggle');
+empProjectsToggle.addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  const val = btn.getAttribute('data-val');
+  if(empProjectsSelected.has(val)){ empProjectsSelected.delete(val); btn.classList.remove('active'); }
+  else { empProjectsSelected.add(val); btn.classList.add('active'); }
+});
+
+document.getElementById('employeeForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = document.getElementById('empName').value.trim();
+  const code = document.getElementById('empCode').value.trim();
+  if(!name || !code) return;
+  const projectsObj = {};
+  empProjectsSelected.forEach(p => { projectsObj[p] = true; });
+  const id = db.ref('employees').push().key;
+  await saveEmployee(id, { name, code, role: empRoleSelected, projects: projectsObj, createdAt: new Date().toISOString() });
+  e.target.reset();
+  empRoleSelected = 'МОП';
+  empRoleToggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.getAttribute('data-val') === 'МОП'));
+  empProjectsSelected = new Set();
+  empProjectsToggle.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+});
+
+function renderEmployeesList(){
+  const body = document.getElementById('employeesListBody');
+  const empty = document.getElementById('employeesEmptyState');
+  if(!body) return;
+  const ids = Object.keys(employees);
+  if(ids.length === 0){
+    body.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  body.innerHTML = ids.map(id => {
+    const emp = employees[id];
+    const projNames = Object.keys(emp.projects || {}).filter(k => emp.projects[k]).map(k => PROJECT_LABELS[k] || k);
+    return `
+      <div class="employee-row">
+        <div class="employee-row-top">
+          <span class="employee-row-name">${escapeHtml(emp.name)}</span>
+          <button type="button" class="del-btn" data-id="${id}">убрать</button>
+        </div>
+        <div class="employee-row-meta">Код: <b>${escapeHtml(emp.code)}</b> · Роль: ${emp.role}</div>
+        <div style="margin-top:6px;">${projNames.map(n => `<span class="employee-project-tag">${n}</span>`).join('') || '<span class="employee-row-meta">без проектов</span>'}</div>
+      </div>
+    `;
+  }).join('');
+  body.querySelectorAll('.del-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-id');
+      await deleteEmployee(id);
+    });
+  });
+}
+
+function activateEmployeesTab(btn){
+  projectTabs.querySelectorAll('button, .project-branch').forEach(b => b.classList.toggle('active', b === btn));
+  document.getElementById('kassaSections').style.display = 'none';
+  document.getElementById('summarySection').style.display = 'none';
+  document.getElementById('personalSection').style.display = 'none';
+  document.getElementById('employeeHomeSection').style.display = 'none';
+  document.getElementById('employeesSection').style.display = '';
+  revealAppFromLauncher();
+}
+
 const PROJECT_CODES = { vkider: 'MM-KASSA', artur: 'WW-KASSA', ruslan: 'OO-KASSA', summary: '24-KASSA' };
 const PROJECT_NAMES = { vkider: 'Рома', artur: 'Артур', ruslan: 'Руслан', summary: 'Общая сводка' };
 
@@ -2925,6 +3222,8 @@ function activateProjectTab(project, btn){
   projectTabs.querySelectorAll('button, .project-branch').forEach(b => b.classList.toggle('active', b === btn));
   document.getElementById('summarySection').style.display = 'none';
   document.getElementById('personalSection').style.display = 'none';
+  document.getElementById('employeeHomeSection').style.display = 'none';
+  document.getElementById('employeesSection').style.display = 'none';
   document.getElementById('kassaSections').style.display = '';
   document.getElementById('importPanel').style.display = (project === 'vkider') ? '' : 'none';
   revealAppFromLauncher();
@@ -2937,165 +3236,76 @@ function activateSummaryTab(btn){
   projectTabs.querySelectorAll('button, .project-branch').forEach(b => b.classList.toggle('active', b === btn));
   document.getElementById('kassaSections').style.display = 'none';
   document.getElementById('personalSection').style.display = 'none';
+  document.getElementById('employeeHomeSection').style.display = 'none';
+  document.getElementById('employeesSection').style.display = 'none';
   document.getElementById('summarySection').style.display = '';
   revealAppFromLauncher();
   renderSummary();
 }
 
-function sanitizeUsername(u){
-  return u.trim().toLowerCase().replace(/[.#$\[\]\/\s]+/g, '_');
+// ---------- employees (admin-managed) ----------
+let employees = {};
+function attachEmployeesListener(){
+  db.ref('employees').on('value', snap => {
+    employees = snap.val() || {};
+    renderEmployeesList();
+  }, err => console.error('Firebase employees error', err));
 }
 
-async function hashPassword(pw){
-  const enc = new TextEncoder().encode(pw);
-  const buf = await crypto.subtle.digest('SHA-256', enc);
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+async function saveEmployee(id, data){
+  try{ await db.ref(`employees/${id}`).set(data); }
+  catch(e){ console.error('Firebase employee save error', e); }
 }
 
-const cabinetAuthOverlay = document.getElementById('cabinetAuthOverlay');
-const cabinetAuthCard = document.getElementById('cabinetAuthCard');
-const cabinetPasswordView = document.getElementById('cabinetPasswordView');
-const cabinetAuthTabsView = document.getElementById('cabinetAuthTabsView');
-const cabinetAuthError = document.getElementById('cabinetAuthError');
-let pendingCabinetBtn = null;
-
-function showCabinetError(msg){
-  cabinetAuthError.textContent = msg;
-  cabinetAuthError.classList.add('show');
-  cabinetAuthCard.classList.remove('shake');
-  void cabinetAuthCard.offsetWidth;
-  cabinetAuthCard.classList.add('shake');
+async function deleteEmployee(id){
+  try{ await db.ref(`employees/${id}`).remove(); }
+  catch(e){ console.error('Firebase employee delete error', e); }
 }
 
-function openCabinetAuth(btn){
-  pendingCabinetBtn = btn;
-  cabinetAuthError.classList.remove('show');
-  const rememberedUser = localStorage.getItem('kassa_cabinet_user');
-  if(localStorage.getItem('kassa_cabinet_remember') === '1' && rememberedUser){
-    activatePersonalTab(btn);
-    return;
-  }
-  cabinetAuthOverlay.style.display = 'flex';
-  if(rememberedUser){
-    cabinetPasswordView.style.display = '';
-    cabinetAuthTabsView.style.display = 'none';
-    document.getElementById('cabinetWelcomeBack').textContent = `Здравствуй, ${rememberedUser}! Введи пароль.`;
-    document.getElementById('cabinetPasswordInput').value = '';
-    document.getElementById('cabinetRememberCheck').checked = false;
-  } else {
-    cabinetPasswordView.style.display = 'none';
-    cabinetAuthTabsView.style.display = '';
-  }
-}
-
-function closeCabinetAuth(){
-  cabinetAuthOverlay.style.display = 'none';
-}
-
-cabinetAuthOverlay.addEventListener('click', (e) => { if(e.target === cabinetAuthOverlay) closeCabinetAuth(); });
-
-document.getElementById('cabinetSwitchAccountBtn').addEventListener('click', () => {
-  localStorage.removeItem('kassa_cabinet_user');
-  localStorage.removeItem('kassa_cabinet_remember');
-  cabinetAuthError.classList.remove('show');
-  cabinetPasswordView.style.display = 'none';
-  cabinetAuthTabsView.style.display = '';
-});
-
-const cabinetAuthTabs = document.getElementById('cabinetAuthTabs');
-cabinetAuthTabs.addEventListener('click', (e) => {
-  const btn = e.target.closest('button');
-  if(!btn) return;
-  const tab = btn.getAttribute('data-tab');
-  cabinetAuthTabs.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
-  document.getElementById('cabinetRegisterForm').style.display = (tab === 'register') ? '' : 'none';
-  document.getElementById('cabinetLoginForm').style.display = (tab === 'login') ? '' : 'none';
-});
-
-document.getElementById('cabinetRegisterForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const username = document.getElementById('regUsername').value.trim();
-  const phone = document.getElementById('regPhone').value.trim();
-  const email = document.getElementById('regEmail').value.trim();
-  const password = document.getElementById('regPassword').value;
-  if(!username || !phone || !email || !password){
-    showCabinetError('Заполни все поля');
-    return;
-  }
-  const key = sanitizeUsername(username);
-  try{
-    const existing = await db.ref(`cabinetUsers/${key}`).once('value');
-    if(existing.val()){
-      showCabinetError('Такой username уже занят');
-      return;
+function findEmployeeByNameCode(name, code){
+  const nameNorm = name.trim().toLowerCase();
+  for(const id of Object.keys(employees)){
+    const emp = employees[id];
+    if(emp.name.trim().toLowerCase() === nameNorm && String(emp.code) === String(code)){
+      return { id, ...emp };
     }
-    const passwordHash = await hashPassword(password);
-    await db.ref(`cabinetUsers/${key}`).set({ username, phone, email, passwordHash, createdAt: new Date().toISOString() });
-    localStorage.setItem('kassa_cabinet_user', username);
-    closeCabinetAuth();
-    activatePersonalTab(pendingCabinetBtn);
-  }catch(err){
-    console.error('cabinet register error', err);
-    showCabinetError('Ошибка сохранения, попробуй ещё раз');
   }
-});
+  return null;
+}
 
-document.getElementById('cabinetLoginForm').addEventListener('submit', async (e) => {
+document.getElementById('employeeLoginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const username = document.getElementById('loginUsername').value.trim();
-  const password = document.getElementById('loginPassword').value;
-  if(!username || !password){
-    showCabinetError('Заполни username и пароль');
+  const name = document.getElementById('employeeNameInput').value.trim();
+  const code = document.getElementById('employeeCodeInput').value.trim();
+  if(!name || !code){
+    gateError.textContent = 'Заполни имя и код';
+    gateError.classList.add('show');
     return;
   }
-  const key = sanitizeUsername(username);
-  try{
-    const snap = await db.ref(`cabinetUsers/${key}`).once('value');
-    const data = snap.val();
-    if(!data){ showCabinetError('Пользователь не найден'); return; }
-    const hash = await hashPassword(password);
-    if(hash !== data.passwordHash){ showCabinetError('Неверный пароль'); return; }
-    localStorage.setItem('kassa_cabinet_user', data.username);
-    closeCabinetAuth();
-    activatePersonalTab(pendingCabinetBtn);
-  }catch(err){
-    console.error('cabinet login error', err);
-    showCabinetError('Ошибка входа, попробуй ещё раз');
+  // employees list may not have loaded yet on a very first load — wait briefly if empty
+  if(Object.keys(employees).length === 0){
+    try{ const snap = await db.ref('employees').once('value'); employees = snap.val() || {}; }catch(err){ console.error(err); }
   }
+  const emp = findEmployeeByNameCode(name, code);
+  if(!emp){
+    gateError.textContent = 'Неверное имя или код';
+    gateError.classList.add('show');
+    gateCard.classList.remove('shake');
+    void gateCard.offsetWidth;
+    gateCard.classList.add('shake');
+    return;
+  }
+  localStorage.setItem('kassa_employee_id', emp.id);
+  enterEmployeeMode(emp);
 });
 
-document.getElementById('cabinetPasswordForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const username = localStorage.getItem('kassa_cabinet_user');
-  const password = document.getElementById('cabinetPasswordInput').value;
-  const remember = document.getElementById('cabinetRememberCheck').checked;
-  if(!password){ showCabinetError('Введи пароль'); return; }
-  const key = sanitizeUsername(username);
-  try{
-    const snap = await db.ref(`cabinetUsers/${key}`).once('value');
-    const data = snap.val();
-    if(!data){
-      localStorage.removeItem('kassa_cabinet_user');
-      cabinetPasswordView.style.display = 'none';
-      cabinetAuthTabsView.style.display = '';
-      showCabinetError('Аккаунт не найден, зарегистрируйся заново');
-      return;
-    }
-    const hash = await hashPassword(password);
-    if(hash !== data.passwordHash){ showCabinetError('Неверный пароль'); return; }
-    if(remember) localStorage.setItem('kassa_cabinet_remember', '1');
-    closeCabinetAuth();
-    activatePersonalTab(pendingCabinetBtn);
-  }catch(err){
-    console.error('cabinet password check error', err);
-    showCabinetError('Ошибка входа, попробуй ещё раз');
-  }
-});
 
 function activatePersonalTab(btn){
   projectTabs.querySelectorAll('button, .project-branch').forEach(b => b.classList.toggle('active', b === btn));
   document.getElementById('kassaSections').style.display = 'none';
   document.getElementById('summarySection').style.display = 'none';
+  document.getElementById('employeeHomeSection').style.display = 'none';
+  document.getElementById('employeesSection').style.display = 'none';
   document.getElementById('personalSection').style.display = '';
   revealAppFromLauncher();
   renderPersonal();
@@ -3173,7 +3383,11 @@ projectTabs.addEventListener('click', (e) => {
     return;
   }
   if(project === 'personal'){
-    openCabinetAuth(btn);
+    activatePersonalTab(btn);
+    return;
+  }
+  if(project === 'employees'){
+    activateEmployeesTab(btn);
     return;
   }
   activateProjectTab(project, btn);
@@ -3181,6 +3395,7 @@ projectTabs.addEventListener('click', (e) => {
 
 render();
 attachTasksListener();
+attachEmployeesListener();
 (async function initProject(){
   await migrateLegacyDataIfNeeded();
   updateBranchLockIcons();
@@ -3252,7 +3467,21 @@ document.getElementById('musicStopBtn').addEventListener('click', () => {
   document.getElementById('musicTopBar').style.display = 'none';
 });
 
-if(localStorage.getItem('kassa_authed') === '1'){
+const savedEmployeeId = localStorage.getItem('kassa_employee_id');
+if(savedEmployeeId){
+  db.ref(`employees/${savedEmployeeId}`).once('value').then(snap => {
+    const emp = snap.val();
+    if(emp){
+      enterEmployeeMode({ id: savedEmployeeId, ...emp });
+    } else {
+      localStorage.removeItem('kassa_employee_id');
+      if(localStorage.getItem('kassa_authed') === '1'){ unlockApp(false); }
+    }
+  }).catch(err => {
+    console.error('employee auto-login error', err);
+    if(localStorage.getItem('kassa_authed') === '1'){ unlockApp(false); }
+  });
+} else if(localStorage.getItem('kassa_authed') === '1'){
   unlockApp(false);
 }
 
@@ -3274,6 +3503,17 @@ gateForm.addEventListener('submit', (e) => {
     gateCodeInput.value = '';
     gateCodeInput.focus();
   }
+});
+
+const gateRoleTabs = document.getElementById('gateRoleTabs');
+gateRoleTabs.addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  const role = btn.getAttribute('data-role');
+  gateRoleTabs.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+  document.getElementById('gateAdminView').style.display = (role === 'admin') ? '' : 'none';
+  document.getElementById('gateEmployeeView').style.display = (role === 'employee') ? '' : 'none';
+  gateError.classList.remove('show');
 });
 
 // ---------- Face ID / Touch ID via Telegram BiometricManager ----------
@@ -3359,6 +3599,10 @@ chooseProjectBtn.addEventListener('click', () => {
 });
 
 document.getElementById('switchProjectBtn').addEventListener('click', () => {
+  if(currentEmployee){
+    showEmployeeHome();
+    return;
+  }
   mainApp.style.display = 'none';
   launcherScreen.style.display = 'flex';
   launcherScreen.classList.remove('gate-exit');
