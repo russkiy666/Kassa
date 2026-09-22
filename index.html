@@ -1241,38 +1241,24 @@
       <line x1="13" y1="16.6" x2="13" y2="18.4" stroke="#4C8DFF" stroke-width="1.2"/>
     </svg>
     <h1 class="gate-title">YAKIMOVICH PROD</h1>
-    <p class="gate-sub">Войдите, чтобы открыть кассу</p>
+    <p class="gate-sub">Введите имя и код для входа</p>
 
-    <div class="form-tabs" id="gateRoleTabs" style="margin-bottom:18px;">
-      <button type="button" data-role="admin" class="active">Админ</button>
-      <button type="button" data-role="employee">Сотрудник</button>
-    </div>
+    <form id="gateForm">
+      <input id="gateNameInput" class="auth-input" type="text" placeholder="Имя" autocomplete="off">
+      <input id="gateCode" class="auth-input" type="text" autocomplete="off" spellcheck="false" placeholder="Код">
+      <button type="submit" class="primary gate-btn">Войти</button>
+    </form>
 
-    <div id="gateAdminView">
-      <form id="gateForm">
-        <input id="gateCode" class="gate-input" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Код доступа">
-        <button type="submit" class="primary gate-btn">Войти</button>
-      </form>
+    <div class="gate-or-divider" id="gateOrDivider" style="display:none;"><span></span>или<span></span></div>
+    <button type="button" class="primary gate-btn biometric-primary-btn" id="gateBiometricBtn" style="display:none;">
+      <svg viewBox="0 0 24 24" width="17" height="17"><path d="M8 4.5a7.5 7.5 0 0 1 11.9 6M4.1 10.5A7.5 7.5 0 0 1 8 4.5M4 14a8 8 0 0 0 4 6.9M20 13.5c0 3-1.5 5.5-3.5 7M8.5 20a10 10 0 0 0 8-9.5M12 8a4 4 0 0 1 4 4c0 2-.5 3.5-1.5 5M8 12a4 4 0 0 1 2-3.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      Войти по Face ID
+    </button>
 
-      <div class="gate-or-divider" id="gateOrDivider" style="display:none;"><span></span>или<span></span></div>
-      <button type="button" class="primary gate-btn biometric-primary-btn" id="gateBiometricBtn" style="display:none;">
-        <svg viewBox="0 0 24 24" width="17" height="17"><path d="M8 4.5a7.5 7.5 0 0 1 11.9 6M4.1 10.5A7.5 7.5 0 0 1 8 4.5M4 14a8 8 0 0 0 4 6.9M20 13.5c0 3-1.5 5.5-3.5 7M8.5 20a10 10 0 0 0 8-9.5M12 8a4 4 0 0 1 4 4c0 2-.5 3.5-1.5 5M8 12a4 4 0 0 1 2-3.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-        Войти по Face ID
-      </button>
+    <button type="button" class="gate-cancel" id="gateBiometricSettingsBtn" style="display:none;">Face ID не сработал? Настроить в Telegram</button>
+    <p class="biometric-debug" id="biometricDebug" style="display:none;"></p>
 
-      <button type="button" class="gate-cancel" id="gateBiometricSettingsBtn" style="display:none;">Face ID не сработал? Настроить в Telegram</button>
-      <p class="biometric-debug" id="biometricDebug" style="display:none;"></p>
-    </div>
-
-    <div id="gateEmployeeView" style="display:none;">
-      <form id="employeeLoginForm">
-        <input id="employeeNameInput" class="auth-input" type="text" placeholder="Имя" autocomplete="off">
-        <input id="employeeCodeInput" class="auth-input" type="text" placeholder="Код" autocomplete="off">
-        <button type="submit" class="primary gate-btn">Войти в кабинет</button>
-      </form>
-    </div>
-
-    <p class="gate-error" id="gateError">Неверный код</p>
+    <p class="gate-error" id="gateError">Неверное имя или код</p>
   </div>
 </div>
 
@@ -3264,41 +3250,15 @@ async function deleteEmployee(id){
 
 function findEmployeeByNameCode(name, code){
   const nameNorm = name.trim().toLowerCase();
+  const codeNorm = code.trim().toUpperCase();
   for(const id of Object.keys(employees)){
     const emp = employees[id];
-    if(emp.name.trim().toLowerCase() === nameNorm && String(emp.code) === String(code)){
+    if(emp.name.trim().toLowerCase() === nameNorm && String(emp.code).trim().toUpperCase() === codeNorm){
       return { id, ...emp };
     }
   }
   return null;
 }
-
-document.getElementById('employeeLoginForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const name = document.getElementById('employeeNameInput').value.trim();
-  const code = document.getElementById('employeeCodeInput').value.trim();
-  if(!name || !code){
-    gateError.textContent = 'Заполни имя и код';
-    gateError.classList.add('show');
-    return;
-  }
-  // employees list may not have loaded yet on a very first load — wait briefly if empty
-  if(Object.keys(employees).length === 0){
-    try{ const snap = await db.ref('employees').once('value'); employees = snap.val() || {}; }catch(err){ console.error(err); }
-  }
-  const emp = findEmployeeByNameCode(name, code);
-  if(!emp){
-    gateError.textContent = 'Неверное имя или код';
-    gateError.classList.add('show');
-    gateCard.classList.remove('shake');
-    void gateCard.offsetWidth;
-    gateCard.classList.add('shake');
-    return;
-  }
-  localStorage.setItem('kassa_employee_id', emp.id);
-  enterEmployeeMode(emp);
-});
-
 
 function activatePersonalTab(btn){
   projectTabs.querySelectorAll('button, .project-branch').forEach(b => b.classList.toggle('active', b === btn));
@@ -3490,30 +3450,29 @@ function onGateCodeCorrect(){
   unlockApp(true);
 }
 
-gateForm.addEventListener('submit', (e) => {
+gateForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  const name = document.getElementById('gateNameInput').value.trim();
   const val = gateCodeInput.value.trim().toUpperCase();
   if(val === ACCESS_CODE){
     onGateCodeCorrect();
-  } else {
-    gateError.classList.add('show');
-    gateCard.classList.remove('shake');
-    void gateCard.offsetWidth;
-    gateCard.classList.add('shake');
-    gateCodeInput.value = '';
-    gateCodeInput.focus();
+    return;
   }
-});
-
-const gateRoleTabs = document.getElementById('gateRoleTabs');
-gateRoleTabs.addEventListener('click', (e) => {
-  const btn = e.target.closest('button');
-  if(!btn) return;
-  const role = btn.getAttribute('data-role');
-  gateRoleTabs.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
-  document.getElementById('gateAdminView').style.display = (role === 'admin') ? '' : 'none';
-  document.getElementById('gateEmployeeView').style.display = (role === 'employee') ? '' : 'none';
-  gateError.classList.remove('show');
+  if(Object.keys(employees).length === 0){
+    try{ const snap = await db.ref('employees').once('value'); employees = snap.val() || {}; }catch(err){ console.error(err); }
+  }
+  const emp = findEmployeeByNameCode(name, gateCodeInput.value.trim());
+  if(emp){
+    localStorage.setItem('kassa_employee_id', emp.id);
+    enterEmployeeMode(emp);
+    return;
+  }
+  gateError.classList.add('show');
+  gateCard.classList.remove('shake');
+  void gateCard.offsetWidth;
+  gateCard.classList.add('shake');
+  gateCodeInput.value = '';
+  gateCodeInput.focus();
 });
 
 // ---------- Face ID / Touch ID via Telegram BiometricManager ----------
