@@ -678,6 +678,8 @@
     color:var(--text-soft);
   }
 
+  body:not(.has-soprod) [data-soprod]{display:none !important;}
+
   .hero-grid{
     display:flex;
     flex-wrap:wrap;
@@ -726,7 +728,7 @@
   .hero-item .value{
     font-family:'Space Grotesk',sans-serif;
     font-weight:700;
-    font-size:26px;
+    font-size:clamp(18px,2.2vw,22px);
     letter-spacing:-0.01em;
     line-height:1;
     white-space:nowrap;
@@ -781,7 +783,7 @@
   }
   .vault .amt{
     font-family:'Space Grotesk',sans-serif;
-    font-size:20px;
+    font-size:clamp(15px,1.6vw,18px);
     font-weight:700;
     white-space:nowrap;
     color:var(--text);
@@ -1496,10 +1498,10 @@
       </div>
       <div class="field">
         <label>Кто был МОПом</label>
-        <div class="segmented" id="mopToggle">
-          <span class="pill"></span>
+        <div class="chip-toggle" id="mopToggle">
           <button type="button" data-val="МОП" class="active">МОП</button>
           <button type="button" data-val="ЭКСПЕРТ">ЭКСПЕРТ</button>
+          <button type="button" data-val="ПРОДЮСЕР">ПРОДЮСЕР</button>
         </div>
       </div>
       <div class="field">
@@ -1509,7 +1511,7 @@
           <button type="button" data-val="ЭКСПЕРТ">ЭКСПЕРТ</button>
           <button type="button" data-val="ПРОДЮСЕР">ПРОДЮСЕР</button>
           <button type="button" data-val="КВАЛ">КВАЛ</button>
-          <button type="button" data-val="СОПРОД">СОПРОД</button>
+          <button type="button" data-val="СОПРОД" data-soprod>СОПРОД</button>
         </div>
       </div>
       <div class="field">
@@ -1541,7 +1543,7 @@
           <button type="button" data-val="ЭКСПЕРТ">ЭКСПЕРТ</button>
           <button type="button" data-val="ПРОДЮСЕР">ПРОДЮСЕР</button>
           <button type="button" data-val="КВАЛ">КВАЛ</button>
-          <button type="button" data-val="СОПРОД">СОПРОД</button>
+          <button type="button" data-val="СОПРОД" data-soprod>СОПРОД</button>
         </div>
       </div>
       <div class="submit-row">
@@ -1557,7 +1559,7 @@
           <button type="button" data-val="ЭКСПЕРТ">ЭКСПЕРТ</button>
           <button type="button" data-val="ПРОДЮСЕР">ПРОДЮСЕР</button>
           <button type="button" data-val="КВАЛ">КВАЛ</button>
-          <button type="button" data-val="СОПРОД">СОПРОД</button>
+          <button type="button" data-val="СОПРОД" data-soprod>СОПРОД</button>
         </div>
       </div>
       <div class="field">
@@ -1582,7 +1584,7 @@
           <button type="button" data-val="ЭКСПЕРТ" class="active">ЭКСПЕРТ</button>
           <button type="button" data-val="ПРОДЮСЕР">ПРОДЮСЕР</button>
           <button type="button" data-val="КВАЛ">КВАЛ</button>
-          <button type="button" data-val="СОПРОД">СОПРОД</button>
+          <button type="button" data-val="СОПРОД" data-soprod>СОПРОД</button>
         </div>
       </div>
       <div class="field">
@@ -1592,7 +1594,7 @@
           <button type="button" data-val="ЭКСПЕРТ">ЭКСПЕРТ</button>
           <button type="button" data-val="ПРОДЮСЕР" class="active">ПРОДЮСЕР</button>
           <button type="button" data-val="КВАЛ">КВАЛ</button>
-          <button type="button" data-val="СОПРОД">СОПРОД</button>
+          <button type="button" data-val="СОПРОД" data-soprod>СОПРОД</button>
         </div>
       </div>
       <div class="field">
@@ -1626,7 +1628,7 @@
               <th>МОП на сделке</th>
               <th class="num">Чистыми эксперту</th>
               <th class="num">Чистыми продюсеру</th>
-              <th class="num">Чистыми сопроду</th>
+              <th class="num" data-soprod>Чистыми сопроду</th>
               <th></th>
             </tr>
           </thead>
@@ -2045,7 +2047,7 @@ function renderGoalPanel(){
   ring.style.stroke = percent >= 100 ? 'var(--icon-green)' : 'var(--gold)';
 }
 
-function computeDistributionPure(dealsArr, expensesArr){
+function computeDistributionPure(dealsArr, expensesArr, soprodFlag){
   const revenue = dealsArr.reduce((s,d) => s + d.payment, 0);
   const expenseTotal = expensesArr.reduce((s,e) => s + e.amount, 0);
   const netProfit = revenue - expenseTotal;
@@ -2062,10 +2064,11 @@ function computeDistributionPure(dealsArr, expensesArr){
       const dealNet = netProfit * share;
       const mopPortion = mopPoolTotal * share;
       if(d.mopWho === 'ЭКСПЕРТ' || d.mopWho === 'Я') yaExtra += mopPortion;
+      else if(d.mopWho === 'ПРОДЮСЕР') romaTotal += mopPortion;
       else mopTotal += mopPortion;
 
       yaBase += dealNet * settings.expertPct / 100;
-      if(d.hasSoprod){
+      if(soprodFlag){
         romaTotal += dealNet * settings.producerWithSoprodPct / 100;
         soprodTotal += dealNet * settings.soprodPct / 100;
       } else {
@@ -2079,20 +2082,22 @@ function computeDistributionPure(dealsArr, expensesArr){
 }
 
 function computeDistribution(){
-  return computeDistributionPure(deals, expenses);
+  return computeDistributionPure(deals, expenses, projectHasSoprod);
 }
 
 function computeDealSplit(d, revenue, expenseTotal){
+  const soprodOn = projectHasSoprod;
   const netProfit = revenue - expenseTotal;
   const share = revenue > 0 ? d.payment / revenue : 0;
   const dealNet = netProfit * share;
   const mopCut = dealNet * settings.mopPct / 100;
   const yaBase = dealNet * settings.expertPct / 100;
-  const romaShare = d.hasSoprod
+  const romaBase = soprodOn
     ? dealNet * settings.producerWithSoprodPct / 100
     : dealNet * settings.producerPct / 100;
-  const soprodShare = d.hasSoprod ? dealNet * settings.soprodPct / 100 : 0;
+  const soprodShare = soprodOn ? dealNet * settings.soprodPct / 100 : 0;
   const yaShare = (d.mopWho === 'ЭКСПЕРТ' || d.mopWho === 'Я') ? (yaBase + mopCut) : yaBase;
+  const romaShare = d.mopWho === 'ПРОДЮСЕР' ? (romaBase + mopCut) : romaBase;
   return { yaShare, romaShare, soprodShare };
 }
 
@@ -2143,6 +2148,7 @@ function attachProjectListeners(project){
   transfers = [];
   currentGoalAmount = null;
   projectHasSoprod = false;
+  document.body.classList.remove('has-soprod');
   undoStack = [];
   redoStack = [];
   updateUndoRedoButtons();
@@ -2327,7 +2333,7 @@ function renderTotals(){
     const payout = d.instantMopPayout || 0;
     if(received[rb] !== undefined) received[rb] += (d.payment - payout);
     if(payout > 0){
-      const mopRecipient = (d.mopWho === 'ЭКСПЕРТ' || d.mopWho === 'Я') ? 'ЭКСПЕРТ' : 'МОП';
+      const mopRecipient = (d.mopWho === 'ЭКСПЕРТ' || d.mopWho === 'Я') ? 'ЭКСПЕРТ' : (d.mopWho === 'ПРОДЮСЕР' ? 'ПРОДЮСЕР' : 'МОП');
       received[mopRecipient] += payout;
     }
   }
@@ -2348,7 +2354,7 @@ function renderTotals(){
       <div class="vault mop"><div class="who">МОП</div><div class="amt" id="totMop">0 ₽</div><div class="received">Принято: <span id="recvMop">0 ₽</span></div><div class="spent">Потратил: <span id="spentMop">0 ₽</span></div><div class="extra-line" id="extraMop"></div><div class="extra-line" id="trMop" style="display:none;"></div><div class="balance" id="balMop"></div></div>
       <div class="vault ya"><div class="who">ЭКСПЕРТ</div><div class="amt" id="totYa">0 ₽</div><div class="received">Принято: <span id="recvYa">0 ₽</span></div><div class="spent">Потратил: <span id="spentYa">0 ₽</span></div><div class="extra-line" id="extraYa"></div><div class="extra-line" id="trYa" style="display:none;"></div><div class="balance" id="balYa"></div></div>
       <div class="vault roma"><div class="who">ПРОДЮСЕР</div><div class="amt" id="totRoma">0 ₽</div><div class="received">Принято: <span id="recvRoma">0 ₽</span></div><div class="spent">Потратил: <span id="spentRoma">0 ₽</span></div><div class="extra-line" id="extraRoma"></div><div class="extra-line" id="trRoma" style="display:none;"></div><div class="balance" id="balRoma"></div></div>
-      <div class="vault soprod"><div class="who">СОПРОД</div><div class="amt" id="totSoprod">0 ₽</div><div class="received">Принято: <span id="recvSoprod">0 ₽</span></div><div class="spent">Потратил: <span id="spentSoprod">0 ₽</span></div><div class="extra-line" id="extraSoprod"></div><div class="extra-line" id="trSoprod" style="display:none;"></div><div class="balance" id="balSoprod"></div></div>
+      <div class="vault soprod" data-soprod><div class="who">СОПРОД</div><div class="amt" id="totSoprod">0 ₽</div><div class="received">Принято: <span id="recvSoprod">0 ₽</span></div><div class="spent">Потратил: <span id="spentSoprod">0 ₽</span></div><div class="extra-line" id="extraSoprod"></div><div class="extra-line" id="trSoprod" style="display:none;"></div><div class="balance" id="balSoprod"></div></div>
     `;
     grid.dataset.built = '1';
   }
@@ -2471,7 +2477,7 @@ function renderTable(){
     const revenue = deals.reduce((s,x) => s + x.payment, 0);
     const expenseTotal = expenses.reduce((s,x) => s + x.amount, 0);
     const rows = [...deals].reverse().map(d => {
-      const tagClass = (d.mopWho === 'ЭКСПЕРТ' || d.mopWho === 'Я') ? 'ya' : 'mop';
+      const tagClass = (d.mopWho === 'ЭКСПЕРТ' || d.mopWho === 'Я') ? 'ya' : (d.mopWho === 'ПРОДЮСЕР' ? 'roma' : 'mop');
       const receivedBy = d.receivedBy || 'МОП';
       const receivedClass = receivedTagClass(receivedBy);
       const dateStr = new Date(d.date).toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit'});
@@ -2487,7 +2493,7 @@ function renderTable(){
         <td><span class="who-tag ${tagClass}">${d.mopWho}</span></td>
         <td class="amt-ya num">${fmt(split.yaShare)}</td>
         <td class="amt-roma num">${fmt(split.romaShare)}</td>
-        <td class="num" style="color:var(--icon-purple);">${fmt(split.soprodShare)}</td>
+        <td class="num" data-soprod style="color:var(--icon-purple);">${fmt(split.soprodShare)}</td>
         <td><button class="del-btn" data-id="${d.id}">убрать</button></td>
       </tr>`;
     }).join('');
@@ -2764,7 +2770,6 @@ toggle.addEventListener('click', (e) => {
   if(!btn) return;
   mopWhoSelected = btn.getAttribute('data-val');
   toggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
-  toggle.querySelector('.pill').style.transform = (mopWhoSelected === 'ЭКСПЕРТ') ? 'translateX(100%)' : 'translateX(0)';
 });
 
 let receivedBySelected = 'МОП';
@@ -2811,6 +2816,8 @@ const teamSoprodToggle = document.getElementById('teamSoprodToggle');
 let teamSoprodSelected = 'no';
 
 function syncTeamSettingsToggle(){
+  document.body.classList.toggle('has-soprod', projectHasSoprod);
+  if(typeof ensureSoprodSelectionsValid === 'function') ensureSoprodSelectionsValid();
   teamSoprodSelected = projectHasSoprod ? 'yes' : 'no';
   teamSoprodToggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.getAttribute('data-val') === teamSoprodSelected));
   teamSoprodToggle.querySelector('.pill').style.transform = (teamSoprodSelected === 'yes') ? 'translateX(100%)' : 'translateX(0)';
@@ -2922,7 +2929,6 @@ document.getElementById('dealForm').addEventListener('submit', async (e) => {
   e.target.reset();
   mopWhoSelected = 'МОП';
   toggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.getAttribute('data-val') === 'МОП'));
-  toggle.querySelector('.pill').style.transform = 'translateX(0)';
   receivedBySelected = 'МОП';
   receivedToggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.getAttribute('data-val') === 'МОП'));
   instantPayoutSelected = 'no';
@@ -3109,7 +3115,8 @@ async function loadPersonStats(person){
     const pDeals = dealsSnap.val() || [];
     const pExpenses = expensesSnap.val() || [];
     const pExtras = extrasSnap.val() || [];
-    const dist = computeDistributionPure(pDeals, pExpenses);
+    const sopFlag = !!(await db.ref(`projects/${project}/teamSettings/hasSoprod`).once('value')).val();
+    const dist = computeDistributionPure(pDeals, pExpenses, sopFlag);
     let earned = dist[PERSON_TOTAL_KEY[person]] || 0;
     let extraSum = 0;
     for(const ex of pExtras){
@@ -3266,7 +3273,8 @@ async function renderEmployeeHome(){
     const pDeals = (dealsSnap.val() || []).filter(d => inPeriod(d.date));
     const pExpenses = (expensesSnap.val() || []).filter(e => inPeriod(e.date));
     const pExtras = (extrasSnap.val() || []).filter(ex => inPeriod(ex.date));
-    const dist = computeDistributionPure(pDeals, pExpenses);
+    const sopFlag = !!(await db.ref(`projects/${project}/teamSettings/hasSoprod`).once('value')).val();
+    const dist = computeDistributionPure(pDeals, pExpenses, sopFlag);
     let earned = dist[PERSON_TOTAL_KEY[currentEmployee.role]] || 0;
     for(const ex of pExtras){
       if((ex.person || 'МОП') === currentEmployee.role) earned += ex.amount;
