@@ -1576,7 +1576,7 @@
     </form>
 
     <form class="deal-form" id="transferForm" style="display:none;">
-      <p class="foot-note" style="margin:0 0 4px;">Личные деньги из кармана в карман. Не расход команды и не меняет прибыль, но входит в баланс: у отправителя «К получению» растёт, у получателя — «К возврату». Когда деньги вернули — запиши обратный перевод (от получателя к отправителю), и всё сойдётся.</p>
+      <p class="foot-note" style="margin:0 0 4px;">Личные деньги из кармана в карман. Это не долг, не расход команды и не прибыль — в расчёт долей и баланса не входит, просто записывается отдельно.</p>
       <div class="field">
         <label>От кого</label>
         <div class="chip-toggle" id="trFromToggle">
@@ -2047,7 +2047,7 @@ function renderGoalPanel(){
   ring.style.stroke = percent >= 100 ? 'var(--icon-green)' : 'var(--gold)';
 }
 
-function computeDistributionPure(dealsArr, expensesArr, soprodFlag){
+function computeDistributionPure(dealsArr, expensesArr){
   const revenue = dealsArr.reduce((s,d) => s + d.payment, 0);
   const expenseTotal = expensesArr.reduce((s,e) => s + e.amount, 0);
   const netProfit = revenue - expenseTotal;
@@ -2068,7 +2068,7 @@ function computeDistributionPure(dealsArr, expensesArr, soprodFlag){
       else mopTotal += mopPortion;
 
       yaBase += dealNet * settings.expertPct / 100;
-      if(soprodFlag){
+      if(d.hasSoprod){
         romaTotal += dealNet * settings.producerWithSoprodPct / 100;
         soprodTotal += dealNet * settings.soprodPct / 100;
       } else {
@@ -2082,11 +2082,11 @@ function computeDistributionPure(dealsArr, expensesArr, soprodFlag){
 }
 
 function computeDistribution(){
-  return computeDistributionPure(deals, expenses, projectHasSoprod);
+  return computeDistributionPure(deals, expenses);
 }
 
 function computeDealSplit(d, revenue, expenseTotal){
-  const soprodOn = projectHasSoprod;
+  const soprodOn = !!d.hasSoprod;
   const netProfit = revenue - expenseTotal;
   const share = revenue > 0 ? d.payment / revenue : 0;
   const dealNet = netProfit * share;
@@ -2392,35 +2392,35 @@ function renderTotals(){
   setExtraLine('extraRoma', extraSums['ПРОДЮСЕР']);
   setExtraLine('extraSoprod', extraSums['СОПРОД']);
 
-  const trNet = { 'КВАЛ':0, 'МОП':0, 'ЭКСПЕРТ':0, 'ПРОДЮСЕР':0, 'СОПРОД':0 };
+  const trGiven = { 'КВАЛ':0, 'МОП':0, 'ЭКСПЕРТ':0, 'ПРОДЮСЕР':0, 'СОПРОД':0 };
+  const trGot = { 'КВАЛ':0, 'МОП':0, 'ЭКСПЕРТ':0, 'ПРОДЮСЕР':0, 'СОПРОД':0 };
   for(const t of transfers){
-    if(trNet[t.from] !== undefined) trNet[t.from] += t.amount;
-    if(trNet[t.to] !== undefined) trNet[t.to] -= t.amount;
+    if(trGiven[t.from] !== undefined) trGiven[t.from] += t.amount;
+    if(trGot[t.to] !== undefined) trGot[t.to] += t.amount;
   }
-  setTransferLine('trMgr', trNet['КВАЛ']);
-  setTransferLine('trMop', trNet['МОП']);
-  setTransferLine('trYa', trNet['ЭКСПЕРТ']);
-  setTransferLine('trRoma', trNet['ПРОДЮСЕР']);
-  setTransferLine('trSoprod', trNet['СОПРОД']);
+  setTransferLine('trMgr', trGiven['КВАЛ'], trGot['КВАЛ']);
+  setTransferLine('trMop', trGiven['МОП'], trGot['МОП']);
+  setTransferLine('trYa', trGiven['ЭКСПЕРТ'], trGot['ЭКСПЕРТ']);
+  setTransferLine('trRoma', trGiven['ПРОДЮСЕР'], trGot['ПРОДЮСЕР']);
+  setTransferLine('trSoprod', trGiven['СОПРОД'], trGot['СОПРОД']);
 
-  const adj = r => {
-    let given = 0, got = 0;
-    for(const t of transfers){ if(t.from === r) given += t.amount; if(t.to === r) got += t.amount; }
-    return { recv: got, spent: given };
-  };
-  const roles = [['balMgr','КВАЛ',totalMgr],['balMop','МОП',totalMop],['balYa','ЭКСПЕРТ',totalYa],['balRoma','ПРОДЮСЕР',totalRoma],['balSoprod','СОПРОД',totalSoprod]];
-  for(const [id, r, total] of roles){
-    const a = adj(r);
-    setBalance(id, total, received[r] + a.recv, spent[r] + a.spent);
-  }
+  setBalance('balMgr', totalMgr, received['КВАЛ'], spent['КВАЛ']);
+  setBalance('balMop', totalMop, received['МОП'], spent['МОП']);
+  setBalance('balYa', totalYa, received['ЭКСПЕРТ'], spent['ЭКСПЕРТ']);
+  setBalance('balRoma', totalRoma, received['ПРОДЮСЕР'], spent['ПРОДЮСЕР']);
+  setBalance('balSoprod', totalSoprod, received['СОПРОД'], spent['СОПРОД']);
 }
 
-function setTransferLine(id, net){
+function setTransferLine(id, given, got){
   const el = document.getElementById(id);
   if(!el) return;
-  if(Math.abs(net) < 1){ el.textContent = ''; el.style.display = 'none'; return; }
-  el.textContent = net > 0 ? 'В балансе учтено: он дал из своих ' + fmt(net) : 'В балансе учтено: ему перевели ' + fmt(-net);
+  const parts = [];
+  if(given > 0) parts.push('перевёл: ' + fmt(given));
+  if(got > 0) parts.push('получил перевод: ' + fmt(got));
+  if(!parts.length){ el.textContent = ''; el.style.display = 'none'; return; }
+  el.textContent = 'Личные переводы — ' + parts.join(', ');
   el.style.display = '';
+  el.style.whiteSpace = 'normal';
 }
 
 function setExtraLine(id, amount){
@@ -3115,8 +3115,7 @@ async function loadPersonStats(person){
     const pDeals = dealsSnap.val() || [];
     const pExpenses = expensesSnap.val() || [];
     const pExtras = extrasSnap.val() || [];
-    const sopFlag = !!(await db.ref(`projects/${project}/teamSettings/hasSoprod`).once('value')).val();
-    const dist = computeDistributionPure(pDeals, pExpenses, sopFlag);
+    const dist = computeDistributionPure(pDeals, pExpenses);
     let earned = dist[PERSON_TOTAL_KEY[person]] || 0;
     let extraSum = 0;
     for(const ex of pExtras){
@@ -3273,8 +3272,7 @@ async function renderEmployeeHome(){
     const pDeals = (dealsSnap.val() || []).filter(d => inPeriod(d.date));
     const pExpenses = (expensesSnap.val() || []).filter(e => inPeriod(e.date));
     const pExtras = (extrasSnap.val() || []).filter(ex => inPeriod(ex.date));
-    const sopFlag = !!(await db.ref(`projects/${project}/teamSettings/hasSoprod`).once('value')).val();
-    const dist = computeDistributionPure(pDeals, pExpenses, sopFlag);
+    const dist = computeDistributionPure(pDeals, pExpenses);
     let earned = dist[PERSON_TOTAL_KEY[currentEmployee.role]] || 0;
     for(const ex of pExtras){
       if((ex.person || 'МОП') === currentEmployee.role) earned += ex.amount;
