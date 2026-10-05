@@ -1476,6 +1476,7 @@
   </div>
 
   <section class="vaults" id="totalsGrid"></section>
+  <p class="foot-note" id="recvWarn" style="display:none;color:var(--danger);"></p>
 
   <section class="panel">
     <div class="form-tabs" id="formTabs">
@@ -2073,6 +2074,38 @@ async function migrateLegacyDataIfNeeded(){
   }catch(e){ console.error('migration error', e); }
 }
 
+// ---------- нормализация данных из Firebase ----------
+const ROLE_ALIASES = {
+  'Я':'ЭКСПЕРТ','ИЛЬЯ':'ЭКСПЕРТ','ЭКСПЕРТ':'ЭКСПЕРТ',
+  'РОМА':'ПРОДЮСЕР','РОМАН':'ПРОДЮСЕР','ПРОДЮСЕР':'ПРОДЮСЕР',
+  'МАКС':'КВАЛ','МАКСИМ':'КВАЛ','МЕНЕДЖЕР':'КВАЛ','КВАЛ':'КВАЛ',
+  'МОП':'МОП','СОПРОД':'СОПРОД','СОПРОДЮСЕР':'СОПРОД'
+};
+function normRole(v){
+  if(v === undefined || v === null || v === '') return v;
+  const k = String(v).trim().toUpperCase();
+  return ROLE_ALIASES[k] || v;
+}
+function toArr(v){
+  if(!v) return [];
+  const a = Array.isArray(v) ? v : Object.values(v);
+  return a.filter(x => x && typeof x === 'object');
+}
+function toNum(v){
+  if(typeof v === 'number') return v;
+  const n = parseFloat(String(v || '').replace(/\s/g,'').replace(',','.'));
+  return isNaN(n) ? 0 : n;
+}
+function normDeals(v){
+  return toArr(v).map(d => ({ ...d, payment: toNum(d.payment), receivedBy: normRole(d.receivedBy), mopWho: normRole(d.mopWho) }));
+}
+function normExpenses(v){
+  return toArr(v).map(e => ({ ...e, amount: toNum(e.amount), paidBy: normRole(e.paidBy) }));
+}
+function normExtras(v){
+  return toArr(v).map(x => ({ ...x, amount: toNum(x.amount), person: normRole(x.person) }));
+}
+
 function attachProjectListeners(project){
   if(dealsRef) dealsRef.off();
   if(expensesRef) expensesRef.off();
@@ -2099,14 +2132,14 @@ function attachProjectListeners(project){
   teamRef = db.ref(`projects/${project}/teamSettings/hasSoprod`);
 
   dealsRef.on('value', snap => {
-    deals = snap.val() || [];
+    deals = normDeals(snap.val());
     dataReady.deals = true;
     updateImportButtonState();
     render();
   }, err => console.error('Firebase deals error', err));
 
   expensesRef.on('value', snap => {
-    expenses = snap.val() || [];
+    expenses = normExpenses(snap.val());
     dataReady.expenses = true;
     render();
   }, err => console.error('Firebase expenses error', err));
@@ -2118,7 +2151,7 @@ function attachProjectListeners(project){
   }, err => console.error('Firebase rkoLeads error', err));
 
   extrasRef.on('value', snap => {
-    extras = snap.val() || [];
+    extras = normExtras(snap.val());
     render();
   }, err => console.error('Firebase extras error', err));
 
@@ -2260,6 +2293,14 @@ function renderTotals(){
       const mopRecipient = (d.mopWho === 'ЭКСПЕРТ' || d.mopWho === 'Я') ? 'ЭКСПЕРТ' : 'МОП';
       received[mopRecipient] += payout;
     }
+  }
+  const warnEl = document.getElementById('recvWarn');
+  if(warnEl){
+    const bad = {};
+    for(const d of deals){ const rb = d.receivedBy || 'МОП'; if(received[rb] === undefined) bad[rb] = (bad[rb]||0) + 1; }
+    const keys = Object.keys(bad);
+    warnEl.style.display = keys.length ? '' : 'none';
+    warnEl.textContent = keys.length ? 'Не распознан получатель оплаты: ' + keys.map(k => `«${k}» (${bad[k]})`).join(', ') + '. Эти деньги не попали в «Принято».' : '';
   }
   const spent = { 'КВАЛ':0, 'МОП':0, 'ЭКСПЕРТ':0, 'ПРОДЮСЕР':0, 'СОПРОД':0 };
   for(const e of expenses){
@@ -2909,8 +2950,8 @@ async function loadProjectStats(project){
     db.ref(`projects/${project}/expenses`).once('value'),
     db.ref(`projects/${project}/rkoLeads`).once('value')
   ]);
-  const pDeals = dealsSnap.val() || [];
-  const pExpenses = expensesSnap.val() || [];
+  const pDeals = normDeals(dealsSnap.val());
+  const pExpenses = normExpenses(expensesSnap.val());
   const pRko = rkoSnap.val() || [];
   const revenue = pDeals.reduce((s,d) => s + d.payment, 0);
   const expenseTotal = pExpenses.reduce((s,e) => s + e.amount, 0);
@@ -2955,9 +2996,9 @@ async function loadPersonStats(person){
       db.ref(`projects/${project}/expenses`).once('value'),
       db.ref(`projects/${project}/extras`).once('value')
     ]);
-    const pDeals = dealsSnap.val() || [];
-    const pExpenses = expensesSnap.val() || [];
-    const pExtras = extrasSnap.val() || [];
+    const pDeals = normDeals(dealsSnap.val());
+    const pExpenses = normExpenses(expensesSnap.val());
+    const pExtras = normExtras(extrasSnap.val());
     const dist = computeDistributionPure(pDeals, pExpenses);
     let earned = dist[PERSON_TOTAL_KEY[person]] || 0;
     let extraSum = 0;
@@ -3112,9 +3153,9 @@ async function renderEmployeeHome(){
       const t = new Date(dateStr).getTime();
       return t >= bounds.start.getTime() && t < bounds.end.getTime();
     };
-    const pDeals = (dealsSnap.val() || []).filter(d => inPeriod(d.date));
-    const pExpenses = (expensesSnap.val() || []).filter(e => inPeriod(e.date));
-    const pExtras = (extrasSnap.val() || []).filter(ex => inPeriod(ex.date));
+    const pDeals = (normDeals(dealsSnap.val())).filter(d => inPeriod(d.date));
+    const pExpenses = (normExpenses(expensesSnap.val())).filter(e => inPeriod(e.date));
+    const pExtras = (normExtras(extrasSnap.val())).filter(ex => inPeriod(ex.date));
     const dist = computeDistributionPure(pDeals, pExpenses);
     let earned = dist[PERSON_TOTAL_KEY[currentEmployee.role]] || 0;
     for(const ex of pExtras){
