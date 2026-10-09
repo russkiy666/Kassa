@@ -716,6 +716,8 @@
     line-height:1;
     white-space:nowrap;
   }
+  .hero-sub{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--text-soft);margin-top:10px;white-space:normal;}
+  .hero-item.rko .value{color:var(--icon-green);}
   .hero-item.profit .value{color:var(--icon-purple);}
   .hero-item.expense .value{color:var(--icon-orange);}
 
@@ -1439,6 +1441,16 @@
       </div>
       <div class="value" id="heroExpense">0 ₽</div>
     </div>
+    <div class="hero-item rko">
+      <div class="hero-item-top">
+        <div class="label">ДОХОД С РКО</div>
+        <div class="stat-icon icon-green">
+          <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2.5" stroke-width="1.6"/><path d="M3 10h18" stroke-width="1.6"/></svg>
+        </div>
+      </div>
+      <div class="value" id="heroRko">0 ₽</div>
+      <div class="hero-sub" id="heroRkoSplit"></div>
+    </div>
   </div>
 
   <section class="vaults" id="totalsGrid"></section>
@@ -1687,6 +1699,7 @@
   <p class="tagline">Лиды на открытие счетов — прибыль по каждому вносится вручную.</p>
 
   <section class="vaults" id="rkoStats" style="display:flex; flex-wrap:wrap; gap:14px;"></section>
+  <p class="foot-note" id="rkoWarn" style="display:none;color:var(--danger);"></p>
 
   <section class="panel">
     <h2>Новый лид</h2>
@@ -1705,6 +1718,16 @@
           <button type="button" data-val="РКО ТИНКОФФ" data-price="500">РКО ТИНКОФФ · 500 ₽</button>
           <button type="button" data-val="ОПЛАТА ОБУЧЕНИЕ" data-price="1500">ОПЛАТА ОБУЧЕНИЕ · 1 500 ₽</button>
         </div>
+      </div>
+      <div class="field" style="grid-column:1/-1;">
+        <label>Кто принял оплату за лида</label>
+        <div class="chip-toggle" id="rkoReceivedToggle">
+          <button type="button" data-val="МОП">МОП</button>
+          <button type="button" data-val="Илья">Илья</button>
+          <button type="button" data-val="Рома">Рома</button>
+          <button type="button" data-val="Макс">Макс</button>
+        </div>
+        <div class="foot-note" id="rkoReceivedHint" style="margin-top:6px;"></div>
       </div>
       <div class="field">
         <label for="rkoProfit">Прибыль с лида, ₽ (авто)</label>
@@ -1730,6 +1753,7 @@
               <th>Юзер</th>
               <th>Оформил</th>
               <th class="num">Прибыль</th>
+              <th>Принял</th>
               <th></th>
             </tr>
           </thead>
@@ -2001,17 +2025,27 @@ function renderGoalPanel(){
   ring.style.stroke = percent >= 100 ? 'var(--icon-green)' : 'var(--gold)';
 }
 
-function computeDistributionPure(dealsArr, expensesArr){
-  const revenue = dealsArr.reduce((s,d) => s + d.payment, 0);
-  const expenseTotal = expensesArr.reduce((s,e) => s + e.amount, 0);
-  const netProfit = revenue - expenseTotal;
+function expenseSplit(dealsArr, rkoArr, expensesArr){
+  const revD = dealsArr.reduce((t,d) => t + (Number(d.payment) || 0), 0);
+  const rko = (rkoArr || []).reduce((t,l) => t + (Number(l.profit) || 0), 0);
+  const E = expensesArr.reduce((t,e) => t + (Number(e.amount) || 0), 0);
+  const tot = revD + rko;
+  const Ed = tot > 0 ? E * revD / tot : E;
+  return { revD, rko, E, Ed, Er: E - Ed };
+}
 
-  // Выручка − расход = делим
+function computeDistributionPure(dealsArr, expensesArr, rkoArr){
+  const es = expenseSplit(dealsArr, rkoArr, expensesArr);
+  const revenue = es.revD;
+  const expenseTotal = es.E;
+  const netProfit = revenue - es.Ed;
+
+  // Выручка (сделки) − своя часть расходов = делим
   const managerTotal = netProfit * settings.managerPct / 100;
   const mopPoolTotal = revenue > 0 ? netProfit * settings.mopPct / 100 : 0;
   const remainderPool = netProfit - managerTotal - mopPoolTotal;
   const yaBase = remainderPool * settings.splitPct / 100;
-  const romaTotal = remainderPool - yaBase;
+  const romaDeals = remainderPool - yaBase;
 
   let mopTotal = 0, yaExtra = 0;
   if(revenue > 0){
@@ -2022,13 +2056,24 @@ function computeDistributionPure(dealsArr, expensesArr){
       else mopTotal += portion;
     }
   }
-  const yaTotal = yaBase + yaExtra;
 
-  return { revenue, expenseTotal, netProfit, managerTotal, mopTotal, yaTotal, romaTotal };
+  // РКО: идёт в общую кассу, расходы ложатся и на него, делится только Илья/Рома
+  const rkoNet = es.rko - es.Er;
+  const rkoYa = rkoNet * settings.splitPct / 100;
+  const rkoRoma = rkoNet - rkoYa;
+
+  const yaTotal = yaBase + yaExtra + rkoYa;
+  const romaTotal = romaDeals + rkoRoma;
+
+  return {
+    revenue: revenue + es.rko, expenseTotal, netProfit: netProfit + rkoNet,
+    managerTotal, mopTotal, yaTotal, romaTotal,
+    revenueDeals: revenue, netDeals: netProfit, rkoRevenue: es.rko, rkoNet, rkoYa, rkoRoma
+  };
 }
 
 function computeDistribution(){
-  return computeDistributionPure(deals, expenses);
+  return computeDistributionPure(deals, expenses, rkoLeads);
 }
 
 function computeDealSplit(d, revenue, expenseTotal){
@@ -2270,6 +2315,10 @@ function renderTotals(){
       received[mopRecipient] += payout;
     }
   }
+  for(const l of rkoLeads){
+    const rb = l.receivedBy;
+    if(rb && received[rb] !== undefined) received[rb] += (Number(l.profit) || 0);
+  }
   const spent = { 'Макс':0, 'МОП':0, 'Илья':0, 'Рома':0 };
   for(const e of expenses){
     const pb = e.paidBy || 'МОП';
@@ -2293,6 +2342,8 @@ function renderTotals(){
   animTarget('heroRevenue', dist.revenue);
   animTarget('heroProfit', dist.netProfit);
   animTarget('heroExpense', dist.expenseTotal);
+  animTarget('heroRko', dist.rkoNet);
+  document.getElementById('heroRkoSplit').textContent = 'Илья ' + fmt(dist.rkoYa) + '  ·  Рома ' + fmt(dist.rkoRoma);
 
   const totalMgr = dist.managerTotal + extraSums['Макс'];
   const totalMop = dist.mopTotal + extraSums['МОП'];
@@ -2354,8 +2405,9 @@ function setPersonalLine(id, paidForOthers, ownPaidByOthers){
   const parts = [];
   if(paidForOthers > 0) parts.push('оплатил за другого: ' + fmt(paidForOthers));
   if(ownPaidByOthers > 0) parts.push('за него оплатили: ' + fmt(ownPaidByOthers));
-  el.textContent = parts.length ? 'Личные расходы — ' + parts.join(', ') : '';
-  el.style.display = parts.length ? '' : 'none';
+  // строка в карточке скрыта по просьбе: личные расходы видны только в истории и в балансе
+  el.textContent = '';
+  el.style.display = 'none';
 }
 
 function setBalance(id, fairShare, receivedAmt, spentAmt, adj){
@@ -2397,8 +2449,9 @@ function renderTable(){
     empty.style.display = 'block';
   } else {
     empty.style.display = 'none';
-    const revenue = deals.reduce((s,x) => s + x.payment, 0);
-    const expenseTotal = expenses.reduce((s,x) => s + x.amount, 0);
+    const _es = expenseSplit(deals, rkoLeads, expenses);
+    const revenue = _es.revD;
+    const expenseTotal = _es.Ed;
     const rows = [...deals].reverse().map(d => {
       const tagClass = (d.mopWho === 'Илья' || d.mopWho === 'Я') ? 'ya' : 'mop';
       const receivedBy = d.receivedBy || 'МОП';
@@ -2653,6 +2706,10 @@ function renderRko(){
   animTarget('rkoProfitTotal', netProfit);
 
   document.getElementById('rkoCountBadge').textContent = count ? `(${count})` : '';
+  const noRecv = rkoLeads.filter(l => !l.receivedBy).length;
+  const warn = document.getElementById('rkoWarn');
+  warn.style.display = noRecv ? '' : 'none';
+  warn.textContent = noRecv ? `У лидов без отметки «Принял»: ${noRecv}. Укажи в истории лидов, кто принял оплату, иначе эти деньги не попадут в «Принято».` : '';
 
   const body = document.getElementById('rkoBody');
   const empty = document.getElementById('rkoEmptyState');
@@ -2669,10 +2726,21 @@ function renderRko(){
         <td class="name-cell">${escapeHtml(l.client)}</td>
         <td class="name-cell">${escapeHtml(l.offers.join(', '))}</td>
         <td class="num">${fmt(l.profit)}</td>
+        <td><select class="rko-recv" data-id="${l.id}" style="background:transparent;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:4px 6px;font-size:12px;">${['', 'МОП', 'Илья', 'Рома', 'Макс'].map(r => `<option value="${r}"${(l.receivedBy || '') === r ? ' selected' : ''}>${r || 'не указано'}</option>`).join('')}</select></td>
         <td><button class="del-btn" data-id="${l.id}">убрать</button></td>
       </tr>`;
     }).join('');
     body.innerHTML = rows;
+    body.querySelectorAll('.rko-recv').forEach(sel => {
+      sel.addEventListener('change', async () => {
+        pushUndo();
+        const id = sel.getAttribute('data-id');
+        const lead = rkoLeads.find(l => String(l.id) === id);
+        if(lead){ lead.receivedBy = sel.value; }
+        await saveRkoLeads();
+        render();
+      });
+    });
     body.querySelectorAll('.del-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         pushUndo();
@@ -2871,10 +2939,20 @@ rkoOffersEl.addEventListener('click', (e) => {
   updateRkoProfit();
 });
 
+let rkoReceivedSelected = '';
+document.getElementById('rkoReceivedToggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  rkoReceivedSelected = btn.getAttribute('data-val');
+  document.getElementById('rkoReceivedHint').textContent = '';
+  document.querySelectorAll('#rkoReceivedToggle button').forEach(b => b.classList.toggle('active', b === btn));
+});
+
 document.getElementById('rkoForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const client = document.getElementById('rkoClient').value.trim();
   if(!client || selectedOffers.size === 0) return;
+  if(!rkoReceivedSelected){ document.getElementById('rkoReceivedHint').textContent = 'Выбери, кто принял оплату.'; return; }
   pushUndo();
   let profit = 0;
   const offers = [];
@@ -2888,13 +2966,16 @@ document.getElementById('rkoForm').addEventListener('submit', async (e) => {
     date: new Date().toISOString(),
     client,
     offers,
-    profit
+    profit,
+    receivedBy: rkoReceivedSelected
   });
   lastAddedRkoId = id;
   await saveRkoLeads();
   e.target.reset();
   selectedOffers = new Set();
   rkoOffersEl.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  rkoReceivedSelected = '';
+  document.querySelectorAll('#rkoReceivedToggle button').forEach(b => b.classList.remove('active'));
   updateRkoProfit();
   render();
 });
@@ -2956,11 +3037,8 @@ async function loadProjectStats(project){
   const pDeals = dealsSnap.val() || [];
   const pExpenses = expensesSnap.val() || [];
   const pRko = rkoSnap.val() || [];
-  const revenue = pDeals.reduce((s,d) => s + d.payment, 0);
-  const expenseTotal = pExpenses.reduce((s,e) => s + e.amount, 0);
-  const netProfit = revenue - expenseTotal;
-  const rkoTotal = pRko.reduce((s,l) => s + l.profit, 0);
-  return { revenue, netProfit, rkoTotal };
+  const dist = computeDistributionPure(pDeals, pExpenses, pRko);
+  return { revenue: dist.revenueDeals, netProfit: dist.netDeals, rkoTotal: dist.rkoRevenue, rkoNet: dist.rkoNet };
 }
 
 async function renderSummary(){
@@ -2981,7 +3059,7 @@ async function renderSummary(){
         <div class="summary-dept">
           <div class="summary-dept-title">РКО</div>
           <div class="summary-row"><span class="k">Выручка</span><span class="v">${fmt(s.rkoTotal)}</span></div>
-          <div class="summary-row"><span class="k">Прибыль</span><span class="v">${fmt(s.rkoTotal)}</span></div>
+          <div class="summary-row"><span class="k">Прибыль</span><span class="v">${fmt(s.rkoNet)}</span></div>
         </div>
       </div>
     `;
@@ -2994,15 +3072,17 @@ let currentPersonalPerson = 'Илья';
 async function loadPersonStats(person){
   const keys = Object.keys(PROJECT_LABELS);
   const results = await Promise.all(keys.map(async (project) => {
-    const [dealsSnap, expensesSnap, extrasSnap] = await Promise.all([
+    const [dealsSnap, expensesSnap, extrasSnap, rkoSnap] = await Promise.all([
       db.ref(`projects/${project}/deals`).once('value'),
       db.ref(`projects/${project}/expenses`).once('value'),
-      db.ref(`projects/${project}/extras`).once('value')
+      db.ref(`projects/${project}/extras`).once('value'),
+      db.ref(`projects/${project}/rkoLeads`).once('value')
     ]);
     const pDeals = dealsSnap.val() || [];
     const pExpenses = expensesSnap.val() || [];
     const pExtras = extrasSnap.val() || [];
-    const dist = computeDistributionPure(pDeals, pExpenses);
+    const pRko = rkoSnap.val() || [];
+    const dist = computeDistributionPure(pDeals, pExpenses, pRko);
     let earned = dist[PERSON_TOTAL_KEY[person]] || 0;
     let extraSum = 0;
     for(const ex of pExtras){
@@ -3147,10 +3227,11 @@ async function renderEmployeeHome(){
   const assignedProjects = Object.keys(currentEmployee.projects || {}).filter(k => currentEmployee.projects[k]);
 
   const results = await Promise.all(assignedProjects.map(async (project) => {
-    const [dealsSnap, expensesSnap, extrasSnap] = await Promise.all([
+    const [dealsSnap, expensesSnap, extrasSnap, rkoSnap] = await Promise.all([
       db.ref(`projects/${project}/deals`).once('value'),
       db.ref(`projects/${project}/expenses`).once('value'),
-      db.ref(`projects/${project}/extras`).once('value')
+      db.ref(`projects/${project}/extras`).once('value'),
+      db.ref(`projects/${project}/rkoLeads`).once('value')
     ]);
     const inPeriod = (dateStr) => {
       const t = new Date(dateStr).getTime();
@@ -3159,7 +3240,8 @@ async function renderEmployeeHome(){
     const pDeals = (dealsSnap.val() || []).filter(d => inPeriod(d.date));
     const pExpenses = (expensesSnap.val() || []).filter(e => inPeriod(e.date));
     const pExtras = (extrasSnap.val() || []).filter(ex => inPeriod(ex.date));
-    const dist = computeDistributionPure(pDeals, pExpenses);
+    const pRko = (rkoSnap.val() || []).filter(l => inPeriod(l.date));
+    const dist = computeDistributionPure(pDeals, pExpenses, pRko);
     let earned = dist[PERSON_TOTAL_KEY[currentEmployee.role]] || 0;
     for(const ex of pExtras){
       if((ex.person || 'МОП') === currentEmployee.role) earned += ex.amount;
